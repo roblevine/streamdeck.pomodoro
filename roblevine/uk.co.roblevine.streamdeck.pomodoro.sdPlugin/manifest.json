@@ -20,10 +20,11 @@
 			]
 		},
 		{
-			"Name": "5 Minute Timer",
+			"Name": "Pomodoro Timer",
 			"UUID": "uk.co.roblevine.streamdeck.pomodoro.timer",
 			"Icon": "imgs/actions/counter/icon",
-			"Tooltip": "5 minute Pomodoro timer. Press to start/stop.",
+			"Tooltip": "Configurable Pomodoro timer. Press to start/stop.",
+			"PropertyInspectorPath": "ui/pomodoro-timer.html",
 			"Controllers": [
 				"Keypad"
 			],

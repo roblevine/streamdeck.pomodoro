@@ -8,8 +8,11 @@
 </head>
 
 <body>
-    <sdpi-item label="Timer Info">
-        <span>5 minute Pomodoro timer. Press the button to start or stop the timer.</span>
+    <sdpi-item label="Timer Duration (seconds)">
+        <sdpi-textfield setting="duration" type="number" min="1" max="7200" value="300" placeholder="300"></sdpi-textfield>
+    </sdpi-item>
+    <sdpi-item label="Info">
+        <span>Set timer duration in seconds. Default is 300 seconds (5 minutes). Press the button to start or stop the timer.</span>
     </sdpi-item>
 </body>
 

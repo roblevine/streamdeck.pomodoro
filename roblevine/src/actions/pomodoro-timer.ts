@@ -1,13 +1,13 @@
 import { action, KeyDownEvent, SingletonAction, WillAppearEvent, WillDisappearEvent } from "@elgato/streamdeck";
 
 /**
- * Pomodoro timer action - 5 minute countdown timer
+ * Pomodoro timer action - configurable countdown timer
  */
 @action({ UUID: "uk.co.roblevine.streamdeck.pomodoro.timer" })
 export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	private timers: Map<string, NodeJS.Timeout> = new Map();
 	private endTimes: Map<string, number> = new Map();
-	private readonly totalDuration = 5 * 60; // 5 minutes in seconds
+	private durations: Map<string, number> = new Map(); // Store duration per action instance
 
 	/**
 	 * Initialize the timer display when the action appears
@@ -15,19 +15,32 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	override async onWillAppear(ev: WillAppearEvent<PomodoroSettings>): Promise<void> {
 		const { settings } = ev.payload;
 		const isRunning = settings.isRunning ?? false;
-		const remainingTime = settings.remainingTime ?? 300; // Default 5 minutes
+		const duration = settings.duration ?? 300; // Default 5 minutes
+		const remainingTime = settings.remainingTime ?? duration;
+
+		// Store the duration for this action instance
+		this.durations.set(ev.action.id, duration);
+
+		// Ensure settings are initialized with duration
+		if (!settings.duration) {
+			await ev.action.setSettings({
+				...settings,
+				duration: 300,
+				remainingTime: 300
+			});
+		}
 
 		if (isRunning && settings.endTime) {
 			// Resume timer if it was running
 			const now = Date.now();
 			if (settings.endTime > now) {
-				this.startTimer(ev.action.id, settings.endTime, ev);
+				this.startTimer(ev.action.id, settings.endTime, ev, duration);
 			} else {
 				// Timer expired while action was hidden
 				await this.completeTimer(ev.action.id, ev);
 			}
 		} else {
-			await this.updateDisplay(ev.action, remainingTime);
+			await this.updateDisplay(ev.action, remainingTime, isRunning, duration);
 		}
 	}
 
@@ -41,6 +54,25 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 			this.timers.delete(ev.action.id);
 		}
 		this.endTimes.delete(ev.action.id);
+		this.durations.delete(ev.action.id);
+	}
+
+	/**
+	 * Handle settings changes from the property inspector
+	 */
+	override async onDidReceiveSettings(ev: any): Promise<void> {
+		const { settings } = ev.payload;
+		const isRunning = settings.isRunning ?? false;
+		const duration = settings.duration ?? 300;
+		const remainingTime = settings.remainingTime ?? duration;
+
+		// Update stored duration
+		this.durations.set(ev.action.id, duration);
+
+		// Only update display if timer is not running
+		if (!isRunning) {
+			await this.updateDisplay(ev.action, duration, false, duration);
+		}
 	}
 
 	/**
@@ -60,26 +92,28 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	}
 
 	/**
-	 * Start a new 5-minute timer
+	 * Start a new timer with configured duration
 	 */
 	private async startNewTimer(actionId: string, ev: KeyDownEvent<PomodoroSettings> | WillAppearEvent<PomodoroSettings>): Promise<void> {
-		const duration = 5 * 60; // 5 minutes in seconds
+		const duration = ev.payload.settings.duration ?? 300; // Use configured duration or default 5 minutes
 		const endTime = Date.now() + duration * 1000;
 
 		await ev.action.setSettings({
 			...ev.payload.settings,
 			isRunning: true,
 			remainingTime: duration,
-			endTime: endTime
+			endTime: endTime,
+			duration: duration
 		});
 
-		this.startTimer(actionId, endTime, ev);
+		this.durations.set(actionId, duration);
+		this.startTimer(actionId, endTime, ev, duration);
 	}
 
 	/**
 	 * Start or resume a timer
 	 */
-	private startTimer(actionId: string, endTime: number, ev: KeyDownEvent<PomodoroSettings> | WillAppearEvent<PomodoroSettings>): void {
+	private startTimer(actionId: string, endTime: number, ev: KeyDownEvent<PomodoroSettings> | WillAppearEvent<PomodoroSettings>, duration: number): void {
 		// Clear any existing timer
 		const existingTimer = this.timers.get(actionId);
 		if (existingTimer) {
@@ -87,16 +121,23 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		}
 
 		this.endTimes.set(actionId, endTime);
+		this.durations.set(actionId, duration);
+
+		// Update immediately to show the first frame
+		const now = Date.now();
+		const initialRemaining = Math.ceil((endTime - now) / 1000);
+		this.updateDisplay(ev.action, initialRemaining, true, duration);
 
 		// Update every second
 		const timerId = setInterval(async () => {
 			const now = Date.now();
 			const remaining = Math.ceil((endTime - now) / 1000);
+			const currentDuration = this.durations.get(actionId) ?? duration;
 
 			if (remaining <= 0) {
 				await this.completeTimer(actionId, ev);
 			} else {
-				await this.updateDisplay(ev.action, remaining);
+				await this.updateDisplay(ev.action, remaining, true, currentDuration);
 				await ev.action.setSettings({
 					...ev.payload.settings,
 					remainingTime: remaining
@@ -118,7 +159,8 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		}
 		this.endTimes.delete(actionId);
 
-		const remainingTime = ev.payload.settings.remainingTime ?? 300;
+		const duration = ev.payload.settings.duration ?? 300;
+		const remainingTime = ev.payload.settings.remainingTime ?? duration;
 
 		await ev.action.setSettings({
 			...ev.payload.settings,
@@ -126,7 +168,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 			endTime: undefined
 		});
 
-		await this.updateDisplay(ev.action, remainingTime);
+		await this.updateDisplay(ev.action, remainingTime, false, duration);
 	}
 
 	/**
@@ -140,10 +182,12 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		}
 		this.endTimes.delete(actionId);
 
+		const duration = ev.payload.settings.duration ?? 300;
+
 		await ev.action.setSettings({
 			...ev.payload.settings,
 			isRunning: false,
-			remainingTime: 300,
+			remainingTime: duration,
 			endTime: undefined
 		});
 
@@ -152,20 +196,20 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 
 		// Reset display after 2 seconds
 		setTimeout(async () => {
-			await this.updateDisplay(ev.action, 300);
+			await this.updateDisplay(ev.action, duration, false, duration);
 		}, 2000);
 	}
 
 	/**
 	 * Update the display with formatted time and donut circle
 	 */
-	private async updateDisplay(action: any, seconds: number): Promise<void> {
+	private async updateDisplay(action: any, seconds: number, isRunning: boolean = false, totalDuration: number = 300): Promise<void> {
 		const minutes = Math.floor(seconds / 60);
 		const secs = seconds % 60;
 		const timeString = `${minutes}:${secs.toString().padStart(2, '0')}`;
 
 		// Generate SVG donut circle
-		const svg = this.generateDonutSVG(seconds, this.totalDuration);
+		const svg = this.generateDonutSVG(seconds, totalDuration, isRunning);
 
 		// Convert SVG to base64 data URL
 		const base64 = Buffer.from(svg).toString('base64');
@@ -178,7 +222,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	/**
 	 * Generate SVG donut circle that depletes as time runs out
 	 */
-	private generateDonutSVG(remainingSeconds: number, totalSeconds: number): string {
+	private generateDonutSVG(remainingSeconds: number, totalSeconds: number, isRunning: boolean): string {
 		const size = 144; // Stream Deck button size
 		const center = size / 2;
 		const radius = 50;
@@ -186,6 +230,18 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 
 		// Calculate percentage remaining (0 to 1)
 		const percentage = remainingSeconds / totalSeconds;
+
+		// Determine color based on state and time remaining
+		let color: string;
+		if (!isRunning) {
+			color = "#2196F3"; // Blue when not running
+		} else if (percentage <= 0.10) {
+			color = "#F44336"; // Red when less than 10% left
+		} else if (percentage <= 0.25) {
+			color = "#FF9800"; // Orange when less than 25% left
+		} else {
+			color = "#4CAF50"; // Green when running normally
+		}
 
 		// Calculate the arc path
 		// Start at top (12 o'clock) and go clockwise
@@ -220,7 +276,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 
 		return `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
 			<rect width="${size}" height="${size}" fill="#1a1a1a"/>
-			${path ? `<path d="${path}" stroke="#4CAF50" stroke-width="${strokeWidth}" fill="none" stroke-linecap="round"/>` : ''}
+			${path ? `<path d="${path}" stroke="${color}" stroke-width="${strokeWidth}" fill="none" stroke-linecap="round"/>` : ''}
 		</svg>`;
 	}
 }
@@ -232,4 +288,5 @@ type PomodoroSettings = {
 	isRunning?: boolean;
 	remainingTime?: number;
 	endTime?: number;
+	duration?: number;
 };
