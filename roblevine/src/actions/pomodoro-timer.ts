@@ -136,6 +136,8 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 			const currentDuration = this.durations.get(actionId) ?? duration;
 
 			if (remaining <= 0) {
+				// Show 0:00 before completing
+				await this.updateDisplay(ev.action, 0, true, currentDuration);
 				await this.completeTimer(actionId, ev);
 			} else {
 				await this.updateDisplay(ev.action, remaining, true, currentDuration);
@@ -193,7 +195,6 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		});
 
 		await ev.action.setTitle("Done!");
-		await ev.action.showAlert();
 
 		// Reset display after 2 seconds
 		setTimeout(async () => {
