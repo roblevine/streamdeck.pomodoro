@@ -39,9 +39,10 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 				// Timer expired while action was hidden
 				await this.completeTimer(ev.action.id, ev);
 			}
-		} else {
-			await this.updateDisplay(ev.action, remainingTime, isRunning, duration);
 		}
+
+		// Always update display to ensure proper initialization
+		await this.updateDisplay(ev.action, remainingTime, isRunning, duration);
 	}
 
 	/**
@@ -264,11 +265,11 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		// Build the path
 		let path = '';
 		if (percentage > 0) {
-			if (percentage === 1) {
-				// Full circle - need to draw as two arcs
-				const midX = center + radius * Math.cos(0);
-				const midY = center + radius * Math.sin(0);
-				path = `M ${startX} ${startY} A ${radius} ${radius} 0 1 1 ${midX} ${midY} A ${radius} ${radius} 0 1 1 ${startX} ${startY}`;
+			if (percentage >= 0.999) {
+				// Full circle - draw as two semicircles to avoid SVG arc rendering issues
+				const bottomX = center;
+				const bottomY = center + radius;
+				path = `M ${startX} ${startY} A ${radius} ${radius} 0 0 1 ${bottomX} ${bottomY} A ${radius} ${radius} 0 0 1 ${startX} ${startY}`;
 			} else {
 				path = `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`;
 			}
