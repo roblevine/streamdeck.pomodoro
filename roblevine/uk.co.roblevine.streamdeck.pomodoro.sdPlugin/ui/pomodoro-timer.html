@@ -8,11 +8,20 @@
 </head>
 
 <body>
-    <sdpi-item label="Timer Duration (seconds)">
-        <sdpi-textfield setting="duration" type="number" min="1" max="7200" value="300" placeholder="300"></sdpi-textfield>
+    <sdpi-item label="Work Duration (mm:ss)">
+        <sdpi-textfield setting="workDuration" type="text" pattern="\d{1,3}:\d{2}" value="25:00" placeholder="25:00"></sdpi-textfield>
+    </sdpi-item>
+    <sdpi-item label="Short Break Duration (mm:ss)">
+        <sdpi-textfield setting="shortBreakDuration" type="text" pattern="\d{1,3}:\d{2}" value="5:00" placeholder="5:00"></sdpi-textfield>
+    </sdpi-item>
+    <sdpi-item label="Long Break Duration (mm:ss)">
+        <sdpi-textfield setting="longBreakDuration" type="text" pattern="\d{1,3}:\d{2}" value="15:00" placeholder="15:00"></sdpi-textfield>
+    </sdpi-item>
+    <sdpi-item label="Cycles Before Long Break">
+        <sdpi-textfield setting="cyclesBeforeLongBreak" type="number" min="1" max="10" value="4" placeholder="4"></sdpi-textfield>
     </sdpi-item>
     <sdpi-item label="Info">
-        <span>Set timer duration in seconds. Default is 300 seconds (5 minutes). Press the button to start or stop the timer.</span>
+        <span>Configure your Pomodoro cycle. Enter durations in mm:ss format (e.g., 25:00 for 25 minutes). Default: 25:00 work, 5:00 short break, 15:00 long break after 4 cycles. Press the button to start or stop the timer.</span>
     </sdpi-item>
 </body>
 
