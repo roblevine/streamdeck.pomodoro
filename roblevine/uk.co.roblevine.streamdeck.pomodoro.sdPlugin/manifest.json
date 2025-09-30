@@ -4,22 +4,6 @@
 	"Author": "Rob Levine",
 	"Actions": [
 		{
-			"Name": "Counter",
-			"UUID": "uk.co.roblevine.streamdeck.pomodoro.increment",
-			"Icon": "imgs/actions/counter/icon",
-			"Tooltip": "Displays a count, which increments by one on press.",
-			"PropertyInspectorPath": "ui/increment-counter.html",
-			"Controllers": [
-				"Keypad"
-			],
-			"States": [
-				{
-					"Image": "imgs/actions/counter/key",
-					"TitleAlignment": "middle"
-				}
-			]
-		},
-		{
 			"Name": "Pomodoro Timer",
 			"UUID": "uk.co.roblevine.streamdeck.pomodoro.timer",
 			"Icon": "imgs/actions/counter/icon",
