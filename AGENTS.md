@@ -48,7 +48,7 @@ To preserve conversational nuance across stateless sessions, maintain `SESSION-N
 This is a Stream Deck plugin for a Pomodoro timer, built using the Elgato Stream Deck SDK. The plugin is written in TypeScript and uses Node.js 20 runtime.
 
 **Plugin ID**: `uk.co.roblevine.streamdeck.pomodoro`
-**Current Actions**: Counter (increment counter example action)
+**Current Actions**: Pomodoro Timer (full-featured Pomodoro timer with cycle management and audio notifications)
 
 ## Build System
 
@@ -69,13 +69,20 @@ The build process:
 roblevine/
 ├── src/
 │   ├── plugin.ts                    # Main entry point - registers actions and connects to Stream Deck
-│   └── actions/
-│       └── increment-counter.ts     # Example action (to be replaced with Pomodoro functionality)
+│   ├── actions/
+│   │   └── pomodoro-timer.ts        # Pomodoro timer action implementation
+│   └── lib/
+│       ├── audio-player.ts          # Cross-platform audio playback utility
+│       ├── display-generator.ts     # SVG generation for button display
+│       ├── pomodoro-cycle.ts        # Pomodoro cycle state management
+│       └── timer-manager.ts         # Timer lifecycle management
+├── plans/
+│   └── audio-notifications.md       # Audio feature documentation
 └── uk.co.roblevine.streamdeck.pomodoro.sdPlugin/
     ├── manifest.json                # Stream Deck plugin metadata and action definitions
     ├── bin/plugin.js                # Built plugin code (generated)
     └── ui/
-        └── increment-counter.html   # Property inspector UI for action settings
+        └── pomodoro-timer.html      # Property inspector UI for timer settings
 ```
 
 ## Stream Deck SDK Architecture
@@ -88,15 +95,27 @@ Actions extend `SingletonAction<SettingsType>` and use the `@action` decorator:
 * Actions have persistent settings stored via `setSettings()`/`getSettings()`
 * Common lifecycle events: `onWillAppear`, `onKeyDown`, `onKeyUp`, `onDialRotate`, etc.
 
-### Key Files
+### Key Components
 
 * **plugin.ts**: Registers all actions and establishes Stream Deck connection
 * **manifest.json**: Defines plugin metadata, actions, icons, OS compatibility, and Node.js version
 * **Property Inspector**: HTML files in `ui/` directory provide settings UI using Stream Deck's `sdpi-components`
+* **lib/**: Modular libraries for timer management, display generation, cycle logic, and audio playback
+
+### Property Inspector Communication
+
+The Property Inspector uses raw WebSocket API to communicate with the plugin:
+
+* **Important**: Messages from Property Inspector to plugin must use `pluginUUID` as context (not `actionInfo.context`)
+* WebSocket connection established via `connectElgatoStreamDeckSocket()` callback
+* Custom messages sent via `sendToPlugin()` event and handled by action's `onSendToPlugin()` method
 
 ### Logging
 
-The SDK logger is set to `TRACE` level in development to capture all Stream Deck communication.
+The SDK logger is set to `TRACE` level in development to capture all Stream Deck communication. Logs can be viewed at:
+
+* **macOS**: `~/Library/Logs/ElgatoStreamDeck/StreamDeck.json` (JSON format for debugging WebSocket messages)
+* **Plugin-specific logs**: Would appear at `~/Library/Logs/ElgatoStreamDeck/uk.co.roblevine.streamdeck.pomodoro.sdPlugin/logs/` if created
 
 ## TypeScript Configuration
 
@@ -111,9 +130,33 @@ The SDK logger is set to `TRACE` level in development to capture all Stream Deck
 3. To manually test: build and use Stream Deck application to test actions
 4. Property inspector changes require editing HTML in `ui/` directory
 
+## Key Features
+
+### Pomodoro Cycle Management
+
+* Work periods, short breaks, and long breaks
+* Automatic phase transitions
+* Configurable cycle parameters (durations, cycles before long break)
+* State persists across Stream Deck restarts
+
+### Audio Notifications
+
+* Cross-platform audio playback using native system commands
+* Configurable WAV files for work completion and break completion
+* Preview buttons in Property Inspector for testing sounds
+* Enable/disable toggle for audio notifications
+* See `plans/audio-notifications.md` for detailed implementation
+
+### Visual Feedback
+
+* Dynamic SVG-based donut progress indicator
+* Color-coded states (blue/green/orange/red)
+* Time display in MM:SS format
+* Updates every second during countdown
+
 ## Notes
 
-* The current "Counter" action is a template example
-* Pomodoro timer functionality needs to be implemented
 * Plugin supports Windows 10+ and macOS 12+
 * Stream Deck software version 6.5+ required
+* Detailed feature documentation available in `plans/` directory
+* Audio implementation uses platform-specific commands (afplay/PowerShell/aplay)

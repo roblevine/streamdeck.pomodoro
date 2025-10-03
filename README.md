@@ -4,13 +4,20 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
 
 ## Features
 
-- **Configurable Timer Duration**: Set custom timer lengths (default: 5 minutes)
+- **Pomodoro Cycle Management**: Full Pomodoro technique support with work periods, short breaks, and long breaks
+- **Configurable Durations**: Customize work, short break, and long break durations (default: 25:00 work, 5:00 short break, 15:00 long break)
+- **Automatic Phase Transitions**: Automatically advances through work → short break → work → long break cycle
 - **Visual Countdown Display**: Dynamic donut-style circular progress indicator that depletes as time runs out
 - **Color-Coded States**:
   - 🔵 Blue: Timer stopped/ready
   - 🟢 Green: Timer running (>25% remaining)
   - 🟠 Orange: Warning state (<25% remaining)
   - 🔴 Red: Critical state (<10% remaining)
+- **Audio Notifications**: Configurable sound alerts when work periods and breaks complete
+  - Custom WAV file support
+  - Separate sounds for work completion and break completion
+  - Preview buttons to test sounds before use
+  - Enable/disable toggle
 - **Start/Stop Control**: Press the button to start or stop the timer
 - **Persistent State**: Timer state persists even when the action is hidden or Stream Deck restarts
 - **Time Display**: Shows remaining time in MM:SS format
@@ -42,7 +49,13 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
 
 Click on the Pomodoro Timer button in Stream Deck to open the Property Inspector and configure:
 
-- **Timer Duration**: Set custom duration in seconds (e.g., 1500 for 25 minutes)
+- **Work Duration**: Set work period length in mm:ss format (default: 25:00)
+- **Short Break Duration**: Set short break length in mm:ss format (default: 5:00)
+- **Long Break Duration**: Set long break length in mm:ss format (default: 15:00)
+- **Cycles Before Long Break**: Number of work/short break cycles before a long break (default: 4)
+- **Enable Sound**: Toggle audio notifications on/off
+- **Work End Sound**: Select a WAV file to play when work periods complete (with preview button)
+- **Break End Sound**: Select a WAV file to play when breaks complete (with preview button)
 
 ## Development
 
@@ -68,14 +81,19 @@ npm run watch
 roblevine/
 ├── src/
 │   ├── plugin.ts                           # Main entry point
-│   └── actions/
-│       ├── increment-counter.ts            # Example counter action
-│       └── pomodoro-timer.ts               # Pomodoro timer implementation
+│   ├── actions/
+│   │   └── pomodoro-timer.ts               # Pomodoro timer action
+│   └── lib/
+│       ├── audio-player.ts                 # Cross-platform audio playback
+│       ├── display-generator.ts            # SVG generation for button display
+│       ├── pomodoro-cycle.ts               # Pomodoro cycle state management
+│       └── timer-manager.ts                # Timer lifecycle management
+├── plans/
+│   └── audio-notifications.md              # Audio feature documentation
 └── uk.co.roblevine.streamdeck.pomodoro.sdPlugin/
     ├── manifest.json                       # Plugin metadata
     ├── bin/plugin.js                       # Compiled plugin (generated)
     └── ui/
-        ├── increment-counter.html          # Counter settings UI
         └── pomodoro-timer.html             # Timer settings UI
 ```
 
