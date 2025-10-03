@@ -6,46 +6,59 @@
     <meta charset="utf-8" />
     <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
     <script>
-        // Stream Deck websocket connection
-        let websocket = null;
+        // Custom WebSocket for preview messages (separate from sdpi-components)
+        let previewWebsocket = null;
         let pluginUUID = null;
-        let actionInfo = {};
-        let currentContext = null;
 
-        // Called by Stream Deck when the Property Inspector appears
-        function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, inInfo, inActionInfo) {
-            pluginUUID = inPluginUUID;
-            actionInfo = JSON.parse(inActionInfo);
-            currentContext = actionInfo.context;
+        // Hook into the connection to get the port and UUID, but don't interfere with sdpi-components
+        (function() {
+            const script = document.createElement('script');
+            script.textContent = `
+                (function() {
+                    const originalConnect = window.connectElgatoStreamDeckSocket;
+                    window.connectElgatoStreamDeckSocket = function(inPort, inPluginUUID, inRegisterEvent, inInfo, inActionInfo) {
+                        // Call sdpi-components' original handler first
+                        if (originalConnect) {
+                            originalConnect.apply(this, arguments);
+                        }
 
-            websocket = new WebSocket('ws://127.0.0.1:' + inPort);
+                        // Store UUID for our preview messages
+                        window.__previewPluginUUID = inPluginUUID;
+                        window.__previewPort = inPort;
 
-            websocket.onopen = function() {
+                        // Setup our preview WebSocket connection
+                        if (window.initPreviewWebSocket) {
+                            window.initPreviewWebSocket(inPort, inPluginUUID);
+                        }
+                    };
+                })();
+            `;
+            document.head.appendChild(script);
+        })();
+
+        // Initialize preview WebSocket
+        window.initPreviewWebSocket = function(port, uuid) {
+            pluginUUID = uuid;
+            previewWebsocket = new WebSocket('ws://127.0.0.1:' + port);
+
+            previewWebsocket.onopen = function() {
                 const json = {
-                    event: inRegisterEvent,
-                    uuid: inPluginUUID
+                    event: 'registerPropertyInspector',
+                    uuid: pluginUUID
                 };
-                websocket.send(JSON.stringify(json));
+                previewWebsocket.send(JSON.stringify(json));
             };
+        };
 
-            websocket.onmessage = function(evt) {
-                const data = JSON.parse(evt.data);
-                // Update context if we receive it
-                if (data.context) {
-                    currentContext = data.context;
-                }
-            };
-        }
-
-        // Helper to send message to plugin
+        // Helper to send preview messages to plugin
         function sendToPlugin(payload) {
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
+            if (previewWebsocket && previewWebsocket.readyState === WebSocket.OPEN && pluginUUID) {
                 const json = {
                     event: 'sendToPlugin',
                     context: pluginUUID,
                     payload: payload
                 };
-                websocket.send(JSON.stringify(json));
+                previewWebsocket.send(JSON.stringify(json));
             }
         }
     </script>
