@@ -36,6 +36,12 @@
             document.head.appendChild(script);
         })();
 
+        // Track playback state
+        const playbackState = {
+            work: false,
+            break: false
+        };
+
         // Initialize preview WebSocket
         window.initPreviewWebSocket = function(port, uuid) {
             pluginUUID = uuid;
@@ -48,7 +54,43 @@
                 };
                 previewWebsocket.send(JSON.stringify(json));
             };
+
+            previewWebsocket.onmessage = function(evt) {
+                const data = JSON.parse(evt.data);
+                console.log('Received message from plugin:', data);
+
+                // Handle playback status messages from plugin
+                if (data.event === 'sendToPropertyInspector' || data.event === 'sendToPropertyInspector') {
+                    const payload = data.payload;
+                    console.log('Payload:', payload);
+
+                    if (payload && payload.event === 'playbackStarted') {
+                        console.log('Playback started:', payload.playbackId);
+                        updateButtonState(payload.playbackId, true);
+                    } else if (payload && payload.event === 'playbackStopped') {
+                        console.log('Playback stopped:', payload.playbackId);
+                        updateButtonState(payload.playbackId, false);
+                    }
+                }
+            };
         };
+
+        // Update button state based on playback
+        function updateButtonState(playbackId, isPlaying) {
+            if (playbackId === 'work-preview') {
+                playbackState.work = isPlaying;
+                const button = document.querySelector('#workPreviewBtn');
+                if (button) {
+                    button.textContent = isPlaying ? 'Stop' : 'Preview';
+                }
+            } else if (playbackId === 'break-preview') {
+                playbackState.break = isPlaying;
+                const button = document.querySelector('#breakPreviewBtn');
+                if (button) {
+                    button.textContent = isPlaying ? 'Stop' : 'Preview';
+                }
+            }
+        }
 
         // Helper to send preview messages to plugin
         function sendToPlugin(payload) {
@@ -82,11 +124,11 @@
     </sdpi-item>
     <sdpi-item label="Work End Sound (.wav)">
         <sdpi-file id="workSoundFile" setting="workEndSoundPath" accept=".wav" placeholder="Select work period end sound"></sdpi-file>
-        <sdpi-button onclick="previewWorkSound()">Preview</sdpi-button>
+        <sdpi-button id="workPreviewBtn" onclick="previewWorkSound()">Preview</sdpi-button>
     </sdpi-item>
     <sdpi-item label="Break End Sound (.wav)">
         <sdpi-file id="breakSoundFile" setting="breakEndSoundPath" accept=".wav" placeholder="Select break end sound"></sdpi-file>
-        <sdpi-button onclick="previewBreakSound()">Preview</sdpi-button>
+        <sdpi-button id="breakPreviewBtn" onclick="previewBreakSound()">Preview</sdpi-button>
     </sdpi-item>
     <sdpi-item label="Info">
         <span>Configure your Pomodoro cycle. Enter durations in mm:ss format (e.g., 25:00 for 25 minutes). Default: 25:00 work, 5:00 short break, 15:00 long break after 4 cycles. Press the button to start or stop the timer.</span>
@@ -95,26 +137,68 @@
     <script>
         // Global functions for button clicks
         window.previewWorkSound = function() {
-            const fileInput = document.getElementById('workSoundFile');
-            const filePath = fileInput?.value;
-
-            if (filePath) {
+            if (playbackState.work) {
+                // Stop playback
+                updateButtonState('work-preview', false);
                 sendToPlugin({
-                    action: 'previewSound',
-                    filePath: filePath
+                    action: 'stopSound',
+                    playbackId: 'work-preview'
                 });
+            } else {
+                // Start playback
+                const fileInput = document.getElementById('workSoundFile');
+                const filePath = fileInput?.value;
+
+                if (filePath) {
+                    // Optimistically update UI
+                    updateButtonState('work-preview', true);
+
+                    sendToPlugin({
+                        action: 'previewSound',
+                        filePath: filePath,
+                        playbackId: 'work-preview'
+                    });
+
+                    // Reset button after a reasonable timeout (assume audio finished)
+                    setTimeout(() => {
+                        if (playbackState.work) {
+                            updateButtonState('work-preview', false);
+                        }
+                    }, 5000); // 5 second timeout
+                }
             }
         };
 
         window.previewBreakSound = function() {
-            const fileInput = document.getElementById('breakSoundFile');
-            const filePath = fileInput?.value;
-
-            if (filePath) {
+            if (playbackState.break) {
+                // Stop playback
+                updateButtonState('break-preview', false);
                 sendToPlugin({
-                    action: 'previewSound',
-                    filePath: filePath
+                    action: 'stopSound',
+                    playbackId: 'break-preview'
                 });
+            } else {
+                // Start playback
+                const fileInput = document.getElementById('breakSoundFile');
+                const filePath = fileInput?.value;
+
+                if (filePath) {
+                    // Optimistically update UI
+                    updateButtonState('break-preview', true);
+
+                    sendToPlugin({
+                        action: 'previewSound',
+                        filePath: filePath,
+                        playbackId: 'break-preview'
+                    });
+
+                    // Reset button after a reasonable timeout (assume audio finished)
+                    setTimeout(() => {
+                        if (playbackState.break) {
+                            updateButtonState('break-preview', false);
+                        }
+                    }, 5000); // 5 second timeout
+                }
             }
         };
     </script>

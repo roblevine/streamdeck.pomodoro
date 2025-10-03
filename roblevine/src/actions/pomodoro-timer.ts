@@ -116,10 +116,32 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	 * Handle messages from the property inspector
 	 */
 	override async onSendToPlugin(ev: SendToPluginEvent<any, PomodoroSettings>): Promise<void> {
-		const { action, filePath } = ev.payload;
+		const { action, filePath, playbackId } = ev.payload;
 
-		if (action === 'previewSound' && filePath) {
-			await AudioPlayer.play(filePath);
+		if (action === 'previewSound' && filePath && playbackId) {
+			// Send playback started message
+			await streamDeck.ui.current?.sendToPropertyInspector({
+				event: 'playbackStarted',
+				playbackId: playbackId
+			});
+
+			// Play the sound (this will block until complete)
+			await AudioPlayer.play(filePath, playbackId);
+
+			// Send playback stopped message
+			await streamDeck.ui.current?.sendToPropertyInspector({
+				event: 'playbackStopped',
+				playbackId: playbackId
+			});
+		} else if (action === 'stopSound') {
+			AudioPlayer.stop();
+			// Send playback stopped message for the current playback
+			if (playbackId) {
+				await streamDeck.ui.current?.sendToPropertyInspector({
+					event: 'playbackStopped',
+					playbackId: playbackId
+				});
+			}
 		}
 	}
 
@@ -203,9 +225,9 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		// Play sound if enabled
 		if (settings.enableSound) {
 			if (currentPhase === 'work' && settings.workEndSoundPath) {
-				await AudioPlayer.play(settings.workEndSoundPath);
+				await AudioPlayer.play(settings.workEndSoundPath, 'timer-completion');
 			} else if ((currentPhase === 'shortBreak' || currentPhase === 'longBreak') && settings.breakEndSoundPath) {
-				await AudioPlayer.play(settings.breakEndSoundPath);
+				await AudioPlayer.play(settings.breakEndSoundPath, 'timer-completion');
 			}
 		}
 
