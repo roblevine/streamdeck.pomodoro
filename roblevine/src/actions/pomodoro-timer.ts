@@ -1,4 +1,5 @@
-import { action, KeyDownEvent, SingletonAction, WillAppearEvent, WillDisappearEvent } from "@elgato/streamdeck";
+import { action, KeyDownEvent, SendToPluginEvent, SingletonAction, WillAppearEvent, WillDisappearEvent } from "@elgato/streamdeck";
+import streamDeck from "@elgato/streamdeck";
 import { TimerManager } from "../lib/timer-manager";
 import { DisplayGenerator } from "../lib/display-generator";
 import { PomodoroCycle, type Phase, type CycleConfig, type CycleState } from "../lib/pomodoro-cycle";
@@ -108,6 +109,17 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		} else {
 			// Start the timer (5 minutes)
 			await this.startNewTimer(ev.action.id, ev);
+		}
+	}
+
+	/**
+	 * Handle messages from the property inspector
+	 */
+	override async onSendToPlugin(ev: SendToPluginEvent<any, PomodoroSettings>): Promise<void> {
+		const { action, filePath } = ev.payload;
+
+		if (action === 'previewSound' && filePath) {
+			await AudioPlayer.play(filePath);
 		}
 	}
 

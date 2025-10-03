@@ -5,6 +5,50 @@
     <title>Pomodoro Timer Settings</title>
     <meta charset="utf-8" />
     <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+    <script>
+        // Stream Deck websocket connection
+        let websocket = null;
+        let pluginUUID = null;
+        let actionInfo = {};
+        let currentContext = null;
+
+        // Called by Stream Deck when the Property Inspector appears
+        function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, inInfo, inActionInfo) {
+            pluginUUID = inPluginUUID;
+            actionInfo = JSON.parse(inActionInfo);
+            currentContext = actionInfo.context;
+
+            websocket = new WebSocket('ws://127.0.0.1:' + inPort);
+
+            websocket.onopen = function() {
+                const json = {
+                    event: inRegisterEvent,
+                    uuid: inPluginUUID
+                };
+                websocket.send(JSON.stringify(json));
+            };
+
+            websocket.onmessage = function(evt) {
+                const data = JSON.parse(evt.data);
+                // Update context if we receive it
+                if (data.context) {
+                    currentContext = data.context;
+                }
+            };
+        }
+
+        // Helper to send message to plugin
+        function sendToPlugin(payload) {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                const json = {
+                    event: 'sendToPlugin',
+                    context: pluginUUID,
+                    payload: payload
+                };
+                websocket.send(JSON.stringify(json));
+            }
+        }
+    </script>
 </head>
 
 <body>
@@ -24,14 +68,43 @@
         <sdpi-checkbox setting="enableSound" value="true"></sdpi-checkbox>
     </sdpi-item>
     <sdpi-item label="Work End Sound (.wav)">
-        <sdpi-file setting="workEndSoundPath" accept=".wav" placeholder="Select work period end sound"></sdpi-file>
+        <sdpi-file id="workSoundFile" setting="workEndSoundPath" accept=".wav" placeholder="Select work period end sound"></sdpi-file>
+        <sdpi-button onclick="previewWorkSound()">Preview</sdpi-button>
     </sdpi-item>
     <sdpi-item label="Break End Sound (.wav)">
-        <sdpi-file setting="breakEndSoundPath" accept=".wav" placeholder="Select break end sound"></sdpi-file>
+        <sdpi-file id="breakSoundFile" setting="breakEndSoundPath" accept=".wav" placeholder="Select break end sound"></sdpi-file>
+        <sdpi-button onclick="previewBreakSound()">Preview</sdpi-button>
     </sdpi-item>
     <sdpi-item label="Info">
         <span>Configure your Pomodoro cycle. Enter durations in mm:ss format (e.g., 25:00 for 25 minutes). Default: 25:00 work, 5:00 short break, 15:00 long break after 4 cycles. Press the button to start or stop the timer.</span>
     </sdpi-item>
+
+    <script>
+        // Global functions for button clicks
+        window.previewWorkSound = function() {
+            const fileInput = document.getElementById('workSoundFile');
+            const filePath = fileInput?.value;
+
+            if (filePath) {
+                sendToPlugin({
+                    action: 'previewSound',
+                    filePath: filePath
+                });
+            }
+        };
+
+        window.previewBreakSound = function() {
+            const fileInput = document.getElementById('breakSoundFile');
+            const filePath = fileInput?.value;
+
+            if (filePath) {
+                sendToPlugin({
+                    action: 'previewSound',
+                    filePath: filePath
+                });
+            }
+        };
+    </script>
 </body>
 
 </html>
