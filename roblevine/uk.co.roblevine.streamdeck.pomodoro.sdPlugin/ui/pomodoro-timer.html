@@ -20,6 +20,15 @@
     <sdpi-item label="Cycles Before Long Break">
         <sdpi-textfield setting="cyclesBeforeLongBreak" type="number" min="1" max="10" value="4" placeholder="4"></sdpi-textfield>
     </sdpi-item>
+    <sdpi-item label="Enable Sound">
+        <sdpi-checkbox setting="enableSound" value="true"></sdpi-checkbox>
+    </sdpi-item>
+    <sdpi-item label="Work End Sound (.wav)">
+        <sdpi-file setting="workEndSoundPath" accept=".wav" placeholder="Select work period end sound"></sdpi-file>
+    </sdpi-item>
+    <sdpi-item label="Break End Sound (.wav)">
+        <sdpi-file setting="breakEndSoundPath" accept=".wav" placeholder="Select break end sound"></sdpi-file>
+    </sdpi-item>
     <sdpi-item label="Info">
         <span>Configure your Pomodoro cycle. Enter durations in mm:ss format (e.g., 25:00 for 25 minutes). Default: 25:00 work, 5:00 short break, 15:00 long break after 4 cycles. Press the button to start or stop the timer.</span>
     </sdpi-item>

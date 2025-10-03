@@ -1,4 +1,8 @@
 import { action, KeyDownEvent, SingletonAction, WillAppearEvent, WillDisappearEvent } from "@elgato/streamdeck";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 /**
  * Pomodoro timer action - configurable countdown timer
@@ -226,6 +230,37 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	}
 
 	/**
+	 * Play a sound file
+	 */
+	private async playSound(filePath: string): Promise<void> {
+		if (!filePath) {
+			return;
+		}
+
+		try {
+			// Use different commands based on platform
+			if (process.platform === 'win32') {
+				// Windows: use PowerShell's SoundPlayer
+				const command = `powershell -c "(New-Object Media.SoundPlayer '${filePath}').PlaySync()"`;
+				await execAsync(command);
+			} else if (process.platform === 'darwin') {
+				// macOS: use afplay
+				await execAsync(`afplay "${filePath}"`);
+			} else {
+				// Linux: try aplay (ALSA), fallback to paplay (PulseAudio)
+				try {
+					await execAsync(`aplay "${filePath}"`);
+				} catch {
+					await execAsync(`paplay "${filePath}"`);
+				}
+			}
+		} catch (error) {
+			// Silently fail if audio playback fails
+			console.error('Failed to play sound:', error);
+		}
+	}
+
+	/**
 	 * Complete the timer and advance to next phase in cycle
 	 */
 	private async completeTimer(actionId: string, ev: KeyDownEvent<PomodoroSettings> | WillAppearEvent<PomodoroSettings>): Promise<void> {
@@ -260,6 +295,17 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		} else {
 			// After any break, go back to work
 			nextPhase = 'work';
+		}
+
+		// Play sound if enabled
+		if (settings.enableSound) {
+			if (currentPhase === 'work' && settings.workEndSoundPath) {
+				// Work period just ended, play work end sound
+				await this.playSound(settings.workEndSoundPath);
+			} else if ((currentPhase === 'shortBreak' || currentPhase === 'longBreak') && settings.breakEndSoundPath) {
+				// Break period just ended, play break end sound
+				await this.playSound(settings.breakEndSoundPath);
+			}
 		}
 
 		const nextDuration = this.getDurationForPhase(nextPhase, workDuration, shortBreakDuration, longBreakDuration) * 60;
@@ -405,4 +451,8 @@ type PomodoroSettings = {
 	// Current cycle state
 	currentCycleIndex?: number; // Which step in the cycle (0-based)
 	currentPhase?: 'work' | 'shortBreak' | 'longBreak';
+	// Audio settings
+	enableSound?: boolean;
+	workEndSoundPath?: string;
+	breakEndSoundPath?: string;
 };
