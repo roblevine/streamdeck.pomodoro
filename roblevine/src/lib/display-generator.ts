@@ -1,0 +1,105 @@
+/**
+ * Generates visual displays for the timer action
+ */
+export class DisplayGenerator {
+	private readonly size = 144; // Stream Deck button size
+	private readonly center = this.size / 2;
+	private readonly radius = 50;
+	private readonly strokeWidth = 16;
+
+	/**
+	 * Format seconds into mm:ss string
+	 */
+	formatTime(seconds: number): string {
+		const minutes = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${minutes}:${secs.toString().padStart(2, '0')}`;
+	}
+
+	/**
+	 * Generate SVG donut circle that depletes as time runs out
+	 */
+	generateDonutSVG(
+		remainingSeconds: number,
+		totalSeconds: number,
+		isRunning: boolean,
+		phase: 'work' | 'shortBreak' | 'longBreak' = 'work'
+	): string {
+		const percentage = remainingSeconds / totalSeconds;
+		const color = this.getPhaseColor(phase, isRunning, percentage);
+		const path = this.calculateArcPath(percentage);
+
+		return `<svg width="${this.size}" height="${this.size}" xmlns="http://www.w3.org/2000/svg">
+			<rect width="${this.size}" height="${this.size}" fill="#1a1a1a"/>
+			${path ? `<path d="${path}" stroke="${color}" stroke-width="${this.strokeWidth}" fill="none" stroke-linecap="round"/>` : ''}
+		</svg>`;
+	}
+
+	/**
+	 * Generate a base64 data URL from SVG
+	 */
+	svgToDataUrl(svg: string): string {
+		const base64 = Buffer.from(svg).toString('base64');
+		return `data:image/svg+xml;base64,${base64}`;
+	}
+
+	/**
+	 * Get color based on phase and state
+	 */
+	private getPhaseColor(
+		phase: 'work' | 'shortBreak' | 'longBreak',
+		isRunning: boolean,
+		percentage: number
+	): string {
+		const phaseColors = {
+			work: "#2196F3",       // Blue
+			shortBreak: "#4CAF50", // Green
+			longBreak: "#9C27B0"   // Purple
+		};
+
+		if (!isRunning) {
+			return phaseColors[phase];
+		}
+
+		// Add urgency indicators when running
+		if (percentage <= 0.10) {
+			return "#F44336"; // Red when less than 10% left
+		} else if (percentage <= 0.25) {
+			return "#FF9800"; // Orange when less than 25% left
+		} else {
+			return phaseColors[phase];
+		}
+	}
+
+	/**
+	 * Calculate SVG arc path for donut circle
+	 */
+	private calculateArcPath(percentage: number): string {
+		if (percentage <= 0) {
+			return '';
+		}
+
+		const startAngle = -90; // Start at top (12 o'clock)
+		const endAngle = startAngle + (360 * percentage);
+
+		// Convert to radians
+		const startRad = (startAngle * Math.PI) / 180;
+		const endRad = (endAngle * Math.PI) / 180;
+
+		// Calculate arc points
+		const startX = this.center + this.radius * Math.cos(startRad);
+		const startY = this.center + this.radius * Math.sin(startRad);
+		const endX = this.center + this.radius * Math.cos(endRad);
+		const endY = this.center + this.radius * Math.sin(endRad);
+
+		if (percentage >= 0.999) {
+			// Full circle - draw as two semicircles to avoid SVG arc rendering issues
+			const bottomX = this.center;
+			const bottomY = this.center + this.radius;
+			return `M ${startX} ${startY} A ${this.radius} ${this.radius} 0 0 1 ${bottomX} ${bottomY} A ${this.radius} ${this.radius} 0 0 1 ${startX} ${startY}`;
+		} else {
+			const largeArcFlag = percentage > 0.5 ? 1 : 0;
+			return `M ${startX} ${startY} A ${this.radius} ${this.radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`;
+		}
+	}
+}
