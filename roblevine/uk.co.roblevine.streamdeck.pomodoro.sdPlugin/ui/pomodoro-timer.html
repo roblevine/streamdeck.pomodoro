@@ -42,11 +42,13 @@
             const { streamDeckClient } = window.SDPIComponents;
 
             // Subscribe to sendToPropertyInspector events
-            streamDeckClient.sendToPropertyInspector.handlers.push((payload) => {
-                if (payload.type === 'playbackStarted') {
-                    updateButtonState(payload.payload.playbackId, true);
-                } else if (payload.type === 'playbackStopped') {
-                    updateButtonState(payload.payload.playbackId, false);
+            streamDeckClient.sendToPropertyInspector.handlers.push((event) => {
+                const message = event.payload;
+
+                if (message.type === 'playbackStarted') {
+                    updateButtonState(message.payload.playbackId, true);
+                } else if (message.type === 'playbackStopped') {
+                    updateButtonState(message.payload.playbackId, false);
                 }
             });
         };
