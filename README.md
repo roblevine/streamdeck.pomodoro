@@ -117,29 +117,51 @@ The build process:
 
 **Plugin Logs:**
 
-Plugin logs are written to Stream Deck's main log file:
-- **Windows**: `%APPDATA%\Elgato\StreamDeck\logs\StreamDeck.json`
-- **macOS**: `~/Library/Logs/ElgatoStreamDeck/StreamDeck.json`
+Plugin logs are automatically written to the plugin's log directory using `streamDeck.logger`:
 
-To monitor logs in real-time:
+- **Development directory**: `roblevine/uk.co.roblevine.streamdeck.pomodoro.sdPlugin/logs/`
+- **Installed plugin directory** (Windows): `%APPDATA%\Elgato\StreamDeck\Plugins\uk.co.roblevine.streamdeck.pomodoro.sdPlugin\logs\`
+- **Installed plugin directory** (macOS): `~/Library/Application Support/com.elgato.StreamDeck/Plugins/uk.co.roblevine.streamdeck.pomodoro.sdPlugin/logs/`
+
+Log files are automatically rotated, keeping the 10 most recent logs with a maximum size of 10 MiB each. The most recent log is always `uk.co.roblevine.streamdeck.pomodoro.0.log`.
+
+**Monitor logs in real-time:**
+
 ```bash
-# Windows (Git Bash)
-tail -f "$APPDATA/Elgato/StreamDeck/logs/StreamDeck.json" | grep --line-buffered "pomodoro\|PluginMessageObserver\|PreviewSoundHandler\|StopSoundHandler"
+# Windows (Git Bash) - Development
+tail -f roblevine/uk.co.roblevine.streamdeck.pomodoro.sdPlugin/logs/uk.co.roblevine.streamdeck.pomodoro.0.log
 
-# macOS
-tail -f ~/Library/Logs/ElgatoStreamDeck/StreamDeck.json | grep --line-buffered "pomodoro\|PluginMessageObserver\|PreviewSoundHandler\|StopSoundHandler"
+# Windows (Git Bash) - Installed plugin
+tail -f "$APPDATA/Elgato/StreamDeck/Plugins/uk.co.roblevine.streamdeck.pomodoro.sdPlugin/logs/uk.co.roblevine.streamdeck.pomodoro.0.log"
+
+# macOS - Installed plugin
+tail -f ~/Library/Application\ Support/com.elgato.StreamDeck/Plugins/uk.co.roblevine.streamdeck.pomodoro.sdPlugin/logs/uk.co.roblevine.streamdeck.pomodoro.0.log
 ```
+
+**Log Levels:**
+
+The plugin uses `LogLevel.TRACE` in development (set in `src/plugin.ts`) which captures all debug messages including:
+- `[PluginMessageObserver]` - Message routing and handler dispatch
+- `[PreviewSoundHandler]` - Audio preview functionality
+- `[StopSoundHandler]` - Stop audio functionality
+- SDK protocol messages (connection, events, etc.)
 
 **Property Inspector Logs:**
 
-The Property Inspector runs in an embedded web view. To access console logs:
+The Property Inspector runs in an embedded web view with `[PI MessageBus]` console logging. To access:
 
 1. Open the Property Inspector (click on a Pomodoro button in Stream Deck)
 2. Check if Stream Deck has remote debugging enabled at: `http://localhost:23654`
-3. Look for `[PI MessageBus]` logs in the remote debugging console
+3. Look for `[PI MessageBus]` logs showing message subscriptions and publications
 4. Alternatively, check Stream Deck preferences for "Enable Developer Mode" option
 
 Note: Property Inspector debugging availability depends on your Stream Deck version.
+
+**Stream Deck Application Logs:**
+
+Stream Deck's main application logs (SDK protocol messages only, not plugin-level logs):
+- **Windows**: `%APPDATA%\Elgato\StreamDeck\logs\StreamDeck.json`
+- **macOS**: `~/Library/Logs/ElgatoStreamDeck/StreamDeck.json`
 
 ### Architecture
 
