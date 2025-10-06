@@ -101,6 +101,8 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	 * Handle settings changes from the property inspector
 	 */
 	override async onDidReceiveSettings(ev: any): Promise<void> {
+		streamDeck.logger.debug('[PomodoroTimer] onDidReceiveSettings triggered', JSON.stringify(ev.payload.settings));
+
 		const { settings } = ev.payload;
 		const isRunning = settings.isRunning ?? false;
 		const duration = settings.duration ?? 300;

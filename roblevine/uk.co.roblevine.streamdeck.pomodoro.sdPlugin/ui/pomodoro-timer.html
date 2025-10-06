@@ -5,18 +5,14 @@
     <title>Pomodoro Timer Settings</title>
     <meta charset="utf-8" />
     <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
-    <script src="pi-message-bus.js"></script>
     <script>
-        // Global message bus instance
-        let messageBus = null;
-
         // Track playback state
         const playbackState = {
             work: false,
             break: false
         };
 
-        // Hook into the connection callback
+        // Hook into the connection callback to set up message handlers
         (function() {
             const script = document.createElement('script');
             script.textContent = `
@@ -28,31 +24,31 @@
                             originalConnect.apply(this, arguments);
                         }
 
-                        // Initialize our message bus
-                        if (window.initMessageBus) {
-                            window.initMessageBus(inPort, inPluginUUID);
-                        }
+                        // Set up our custom message handlers
+                        setTimeout(() => {
+                            if (window.setupMessageHandlers) {
+                                window.setupMessageHandlers();
+                            }
+                        }, 100);
                     };
                 })();
             `;
             document.head.appendChild(script);
         })();
 
-        // Initialize message bus
-        window.initMessageBus = function(port, uuid) {
-            messageBus = new PropertyInspectorMessageBus(true); // Debug mode ON
-            messageBus.init(port, uuid);
+        // Set up handlers for messages from the plugin
+        window.setupMessageHandlers = function() {
+            // Listen for messages from the plugin using the streamDeckClient's event system
+            const { streamDeckClient } = window.SDPIComponents;
 
-            // Subscribe to plugin responses
-            messageBus.subscribe('playbackStarted', (msg) => {
-                updateButtonState(msg.payload.playbackId, true);
+            // Subscribe to sendToPropertyInspector events
+            streamDeckClient.sendToPropertyInspector.handlers.push((payload) => {
+                if (payload.type === 'playbackStarted') {
+                    updateButtonState(payload.payload.playbackId, true);
+                } else if (payload.type === 'playbackStopped') {
+                    updateButtonState(payload.payload.playbackId, false);
+                }
             });
-
-            messageBus.subscribe('playbackStopped', (msg) => {
-                updateButtonState(msg.payload.playbackId, false);
-            });
-
-            console.log('[PI] Message bus initialized and subscribed');
         };
 
         // Update button state based on playback
@@ -105,9 +101,11 @@
     <script>
         // Global functions for button clicks
         window.previewWorkSound = function() {
+            const { streamDeckClient } = window.SDPIComponents;
+
             if (playbackState.work) {
                 // Stop playback
-                messageBus.publish({
+                streamDeckClient.send('sendToPlugin', {
                     type: 'stopSound',
                     payload: { playbackId: 'work-preview' }
                 });
@@ -117,7 +115,7 @@
                 const filePath = fileInput?.value;
 
                 if (filePath) {
-                    messageBus.publish({
+                    streamDeckClient.send('sendToPlugin', {
                         type: 'previewSound',
                         payload: { filePath, playbackId: 'work-preview' }
                     });
@@ -126,9 +124,11 @@
         };
 
         window.previewBreakSound = function() {
+            const { streamDeckClient } = window.SDPIComponents;
+
             if (playbackState.break) {
                 // Stop playback
-                messageBus.publish({
+                streamDeckClient.send('sendToPlugin', {
                     type: 'stopSound',
                     payload: { playbackId: 'break-preview' }
                 });
@@ -138,7 +138,7 @@
                 const filePath = fileInput?.value;
 
                 if (filePath) {
-                    messageBus.publish({
+                    streamDeckClient.send('sendToPlugin', {
                         type: 'previewSound',
                         payload: { filePath, playbackId: 'break-preview' }
                     });
