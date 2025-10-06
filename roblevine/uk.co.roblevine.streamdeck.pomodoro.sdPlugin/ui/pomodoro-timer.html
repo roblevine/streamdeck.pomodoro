@@ -5,12 +5,18 @@
     <title>Pomodoro Timer Settings</title>
     <meta charset="utf-8" />
     <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+    <script src="pi-message-bus.js"></script>
     <script>
-        // Custom WebSocket for preview messages (separate from sdpi-components)
-        let previewWebsocket = null;
-        let pluginUUID = null;
+        // Global message bus instance
+        let messageBus = null;
 
-        // Hook into the connection to get the port and UUID, but don't interfere with sdpi-components
+        // Track playback state
+        const playbackState = {
+            work: false,
+            break: false
+        };
+
+        // Hook into the connection callback
         (function() {
             const script = document.createElement('script');
             script.textContent = `
@@ -22,13 +28,9 @@
                             originalConnect.apply(this, arguments);
                         }
 
-                        // Store UUID for our preview messages
-                        window.__previewPluginUUID = inPluginUUID;
-                        window.__previewPort = inPort;
-
-                        // Setup our preview WebSocket connection
-                        if (window.initPreviewWebSocket) {
-                            window.initPreviewWebSocket(inPort, inPluginUUID);
+                        // Initialize our message bus
+                        if (window.initMessageBus) {
+                            window.initMessageBus(inPort, inPluginUUID);
                         }
                     };
                 })();
@@ -36,43 +38,21 @@
             document.head.appendChild(script);
         })();
 
-        // Track playback state
-        const playbackState = {
-            work: false,
-            break: false
-        };
+        // Initialize message bus
+        window.initMessageBus = function(port, uuid) {
+            messageBus = new PropertyInspectorMessageBus(true); // Debug mode ON
+            messageBus.init(port, uuid);
 
-        // Initialize preview WebSocket
-        window.initPreviewWebSocket = function(port, uuid) {
-            pluginUUID = uuid;
-            previewWebsocket = new WebSocket('ws://127.0.0.1:' + port);
+            // Subscribe to plugin responses
+            messageBus.subscribe('playbackStarted', (msg) => {
+                updateButtonState(msg.payload.playbackId, true);
+            });
 
-            previewWebsocket.onopen = function() {
-                const json = {
-                    event: 'registerPropertyInspector',
-                    uuid: pluginUUID
-                };
-                previewWebsocket.send(JSON.stringify(json));
-            };
+            messageBus.subscribe('playbackStopped', (msg) => {
+                updateButtonState(msg.payload.playbackId, false);
+            });
 
-            previewWebsocket.onmessage = function(evt) {
-                const data = JSON.parse(evt.data);
-                console.log('Received message from plugin:', data);
-
-                // Handle playback status messages from plugin
-                if (data.event === 'sendToPropertyInspector' || data.event === 'sendToPropertyInspector') {
-                    const payload = data.payload;
-                    console.log('Payload:', payload);
-
-                    if (payload && payload.event === 'playbackStarted') {
-                        console.log('Playback started:', payload.playbackId);
-                        updateButtonState(payload.playbackId, true);
-                    } else if (payload && payload.event === 'playbackStopped') {
-                        console.log('Playback stopped:', payload.playbackId);
-                        updateButtonState(payload.playbackId, false);
-                    }
-                }
-            };
+            console.log('[PI] Message bus initialized and subscribed');
         };
 
         // Update button state based on playback
@@ -89,18 +69,6 @@
                 if (button) {
                     button.textContent = isPlaying ? 'Stop' : 'Preview';
                 }
-            }
-        }
-
-        // Helper to send preview messages to plugin
-        function sendToPlugin(payload) {
-            if (previewWebsocket && previewWebsocket.readyState === WebSocket.OPEN && pluginUUID) {
-                const json = {
-                    event: 'sendToPlugin',
-                    context: pluginUUID,
-                    payload: payload
-                };
-                previewWebsocket.send(JSON.stringify(json));
             }
         }
     </script>
@@ -139,10 +107,9 @@
         window.previewWorkSound = function() {
             if (playbackState.work) {
                 // Stop playback
-                updateButtonState('work-preview', false);
-                sendToPlugin({
-                    action: 'stopSound',
-                    playbackId: 'work-preview'
+                messageBus.publish({
+                    type: 'stopSound',
+                    payload: { playbackId: 'work-preview' }
                 });
             } else {
                 // Start playback
@@ -150,21 +117,10 @@
                 const filePath = fileInput?.value;
 
                 if (filePath) {
-                    // Optimistically update UI
-                    updateButtonState('work-preview', true);
-
-                    sendToPlugin({
-                        action: 'previewSound',
-                        filePath: filePath,
-                        playbackId: 'work-preview'
+                    messageBus.publish({
+                        type: 'previewSound',
+                        payload: { filePath, playbackId: 'work-preview' }
                     });
-
-                    // Reset button after a reasonable timeout (assume audio finished)
-                    setTimeout(() => {
-                        if (playbackState.work) {
-                            updateButtonState('work-preview', false);
-                        }
-                    }, 5000); // 5 second timeout
                 }
             }
         };
@@ -172,10 +128,9 @@
         window.previewBreakSound = function() {
             if (playbackState.break) {
                 // Stop playback
-                updateButtonState('break-preview', false);
-                sendToPlugin({
-                    action: 'stopSound',
-                    playbackId: 'break-preview'
+                messageBus.publish({
+                    type: 'stopSound',
+                    payload: { playbackId: 'break-preview' }
                 });
             } else {
                 // Start playback
@@ -183,21 +138,10 @@
                 const filePath = fileInput?.value;
 
                 if (filePath) {
-                    // Optimistically update UI
-                    updateButtonState('break-preview', true);
-
-                    sendToPlugin({
-                        action: 'previewSound',
-                        filePath: filePath,
-                        playbackId: 'break-preview'
+                    messageBus.publish({
+                        type: 'previewSound',
+                        payload: { filePath, playbackId: 'break-preview' }
                     });
-
-                    // Reset button after a reasonable timeout (assume audio finished)
-                    setTimeout(() => {
-                        if (playbackState.break) {
-                            updateButtonState('break-preview', false);
-                        }
-                    }, 5000); // 5 second timeout
                 }
             }
         };

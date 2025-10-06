@@ -4,6 +4,10 @@ import { TimerManager } from "../lib/timer-manager";
 import { DisplayGenerator } from "../lib/display-generator";
 import { PomodoroCycle, type Phase, type CycleConfig, type CycleState } from "../lib/pomodoro-cycle";
 import { AudioPlayer } from "../lib/audio-player";
+import { PluginMessageObserver } from "../lib/plugin-message-observer";
+import { handlePreviewSound } from "../lib/message-handlers/preview-sound-handler";
+import { handleStopSound } from "../lib/message-handlers/stop-sound-handler";
+import type { PropertyInspectorMessage } from "../types/messages";
 
 /**
  * Pomodoro timer action - configurable countdown timer
@@ -12,6 +16,21 @@ import { AudioPlayer } from "../lib/audio-player";
 export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	private timerManager = new TimerManager();
 	private displayGenerator = new DisplayGenerator();
+	private messageObserver = new PluginMessageObserver(true); // Debug mode ON
+
+	constructor() {
+		super();
+
+		// Register message handlers
+		this.messageObserver.registerHandler('previewSound', (ctx, msg) =>
+			handlePreviewSound(ctx, msg as any, this.messageObserver)
+		);
+		this.messageObserver.registerHandler('stopSound', (ctx, msg) =>
+			handleStopSound(ctx, msg as any, this.messageObserver)
+		);
+
+		streamDeck.logger.info('[PomodoroTimer] Message handlers registered');
+	}
 
 	/**
 	 * Initialize the timer display when the action appears
@@ -116,33 +135,8 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	 * Handle messages from the property inspector
 	 */
 	override async onSendToPlugin(ev: SendToPluginEvent<any, PomodoroSettings>): Promise<void> {
-		const { action, filePath, playbackId } = ev.payload;
-
-		if (action === 'previewSound' && filePath && playbackId) {
-			// Send playback started message
-			await streamDeck.ui.current?.sendToPropertyInspector({
-				event: 'playbackStarted',
-				playbackId: playbackId
-			});
-
-			// Play the sound (this will block until complete)
-			await AudioPlayer.play(filePath, playbackId);
-
-			// Send playback stopped message
-			await streamDeck.ui.current?.sendToPropertyInspector({
-				event: 'playbackStopped',
-				playbackId: playbackId
-			});
-		} else if (action === 'stopSound') {
-			AudioPlayer.stop();
-			// Send playback stopped message for the current playback
-			if (playbackId) {
-				await streamDeck.ui.current?.sendToPropertyInspector({
-					event: 'playbackStopped',
-					playbackId: playbackId
-				});
-			}
-		}
+		// Delegate all messages to the message observer
+		await this.messageObserver.handleMessage(ev.action.id, ev.payload as PropertyInspectorMessage);
 	}
 
 	/**
