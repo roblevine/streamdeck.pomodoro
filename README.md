@@ -113,6 +113,34 @@ The build process:
 - Generates sourcemaps in watch mode for debugging
 - Auto-restarts Stream Deck plugin on file changes (watch mode)
 
+### Debugging
+
+**Plugin Logs:**
+
+Plugin logs are written to Stream Deck's main log file:
+- **Windows**: `%APPDATA%\Elgato\StreamDeck\logs\StreamDeck.json`
+- **macOS**: `~/Library/Logs/ElgatoStreamDeck/StreamDeck.json`
+
+To monitor logs in real-time:
+```bash
+# Windows (Git Bash)
+tail -f "$APPDATA/Elgato/StreamDeck/logs/StreamDeck.json" | grep --line-buffered "pomodoro\|PluginMessageObserver\|PreviewSoundHandler\|StopSoundHandler"
+
+# macOS
+tail -f ~/Library/Logs/ElgatoStreamDeck/StreamDeck.json | grep --line-buffered "pomodoro\|PluginMessageObserver\|PreviewSoundHandler\|StopSoundHandler"
+```
+
+**Property Inspector Logs:**
+
+The Property Inspector runs in an embedded web view. To access console logs:
+
+1. Open the Property Inspector (click on a Pomodoro button in Stream Deck)
+2. Check if Stream Deck has remote debugging enabled at: `http://localhost:23654`
+3. Look for `[PI MessageBus]` logs in the remote debugging console
+4. Alternatively, check Stream Deck preferences for "Enable Developer Mode" option
+
+Note: Property Inspector debugging availability depends on your Stream Deck version.
+
 ### Architecture
 
 The plugin follows the Elgato Stream Deck SDK architecture:
