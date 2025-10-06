@@ -41,9 +41,9 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 
 		// Initialize Pomodoro cycle settings with defaults
 		const config: CycleConfig = {
-			workDuration: settings.workDuration ?? '25:00',
-			shortBreakDuration: settings.shortBreakDuration ?? '5:00',
-			longBreakDuration: settings.longBreakDuration ?? '15:00',
+			workDuration: settings.workDuration ?? '00:10',
+			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
+			longBreakDuration: settings.longBreakDuration ?? '00:05',
 			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4
 		};
 		const currentPhase = settings.currentPhase ?? 'work';
@@ -62,7 +62,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 				...config,
 				currentCycleIndex: 0,
 				currentPhase: 'work',
-				remainingTime: 25 * 60
+				remainingTime: 10
 			});
 		}
 
@@ -146,9 +146,9 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		const { settings } = ev.payload;
 		const currentPhase = settings.currentPhase ?? 'work';
 		const config: CycleConfig = {
-			workDuration: settings.workDuration ?? '25:00',
-			shortBreakDuration: settings.shortBreakDuration ?? '5:00',
-			longBreakDuration: settings.longBreakDuration ?? '15:00',
+			workDuration: settings.workDuration ?? '00:10',
+			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
+			longBreakDuration: settings.longBreakDuration ?? '00:05',
 			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4
 		};
 
@@ -204,9 +204,9 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		const currentPhase = settings.currentPhase ?? 'work';
 		const currentCycleIndex = settings.currentCycleIndex ?? 0;
 		const config: CycleConfig = {
-			workDuration: settings.workDuration ?? '25:00',
-			shortBreakDuration: settings.shortBreakDuration ?? '5:00',
-			longBreakDuration: settings.longBreakDuration ?? '15:00',
+			workDuration: settings.workDuration ?? '00:10',
+			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
+			longBreakDuration: settings.longBreakDuration ?? '00:05',
 			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4
 		};
 
