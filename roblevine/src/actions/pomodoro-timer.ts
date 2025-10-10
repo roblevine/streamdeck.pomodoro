@@ -20,6 +20,8 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	private messageObserver = new PluginMessageObserver(false);
     private keyDownAt: number | null = null;
     private readonly LONG_PRESS_MS = 2000;
+    private longPressTimer: NodeJS.Timeout | null = null;
+    private longPressFired: boolean = false;
     private controllers: Map<string, WorkflowController> = new Map();
 
     private getController(actionId: string): WorkflowController {
@@ -126,6 +128,17 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	 */
 	override async onKeyDown(ev: KeyDownEvent<PomodoroSettings>): Promise<void> {
 		this.keyDownAt = Date.now();
+		// Start long-press watchdog to trigger reset without relying on keyup timing
+		try { if (this.longPressTimer) { clearTimeout(this.longPressTimer); this.longPressTimer = null; } } catch {}
+		this.longPressFired = false;
+		const settingsForPress = this.extractWorkflowSettings(ev.payload.settings);
+		const actionRef = ev.action;
+		this.longPressTimer = setTimeout(async () => {
+			this.longPressFired = true;
+			try {
+				await this.getController(actionRef.id).longPress(actionRef, settingsForPress);
+			} catch {}
+		}, this.LONG_PRESS_MS);
 	}
 
 	/**
@@ -134,6 +147,8 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	override async onKeyUp(ev: KeyUpEvent<PomodoroSettings>): Promise<void> {
 		const startedAt = this.keyDownAt;
 		this.keyDownAt = null;
+		if (this.longPressTimer) { clearTimeout(this.longPressTimer); this.longPressTimer = null; }
+		if (this.longPressFired) { this.longPressFired = false; return; }
 		const elapsed = startedAt ? Date.now() - startedAt : 0;
 		const controller = this.getController(ev.action.id);
 		if (elapsed >= this.LONG_PRESS_MS) {
