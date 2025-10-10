@@ -20,6 +20,7 @@ export class WorkflowController {
   private lastRemaining?: number;
   private lastTotal?: number;
   private lastPhase?: Phase;
+  private currentSettings?: any;
   private logDebug(msg: string, data?: unknown) {
     try { streamDeck.logger.debug(msg, data as any); } catch { /* noop */ }
   }
@@ -86,13 +87,10 @@ export class WorkflowController {
         await action.setImage(dataUrl);
         await action.setTitle(this.deps.display.formatTime(total));
         try {
-          await action.setSettings({
-            ...settings,
-            isRunning: false,
-            currentPhase: phase,
-            remainingTime: total,
-            endTime: undefined
-          });
+          const base = this.currentSettings ?? settings;
+          const next = { ...base, isRunning: false, currentPhase: phase, remainingTime: total, endTime: undefined };
+          await action.setSettings(next as any);
+          this.currentSettings = next;
         } catch {}
       },
       updateRunning: async (remaining: number, total: number, phase: Phase) => {
@@ -107,12 +105,10 @@ export class WorkflowController {
         await action.setImage(dataUrl);
         await action.setTitle(this.deps.display.formatTime(remaining));
         try {
-          await action.setSettings({
-            ...settings,
-            isRunning: true,
-            currentPhase: phase,
-            remainingTime: remaining
-          });
+          const base = this.currentSettings ?? settings;
+          const next = { ...base, isRunning: true, currentPhase: phase, remainingTime: remaining };
+          await action.setSettings(next as any);
+          this.currentSettings = next;
         } catch {}
       },
       showPaused: async (remaining: number, total: number, phase: Phase) => {
@@ -126,13 +122,10 @@ export class WorkflowController {
           try { await this.drawPausedFrame(action, remaining, total, phase); } catch {}
         }, 600);
         try {
-          await action.setSettings({
-            ...settings,
-            isRunning: false,
-            currentPhase: phase,
-            remainingTime: remaining,
-            endTime: undefined
-          });
+          const base = this.currentSettings ?? settings;
+          const next = { ...base, isRunning: false, currentPhase: phase, remainingTime: remaining, endTime: undefined };
+          await action.setSettings(next as any);
+          this.currentSettings = next;
         } catch {}
       },
       showCompletionWithSound: async (kind: 'work' | 'break', durationMs: number) => {
@@ -140,9 +133,10 @@ export class WorkflowController {
         // Start animation and sound in parallel; extend hold if sound is longer
         const anim = this.runCompletionAnimation(action, durationMs);
         let soundPath: string | undefined;
-        if ((settings as any).enableSound) {
-          if (kind === 'work') soundPath = (settings as any).workEndSoundPath as string | undefined;
-          else soundPath = (settings as any).breakEndSoundPath as string | undefined;
+        const cur = this.currentSettings ?? settings;
+        if ((cur as any).enableSound) {
+          if (kind === 'work') soundPath = (cur as any).workEndSoundPath as string | undefined;
+          else soundPath = (cur as any).breakEndSoundPath as string | undefined;
         }
         const soundPromise = (soundPath && soundPath.length > 0)
           ? AudioPlayer.play(soundPath, 'timer-completion')
@@ -152,7 +146,8 @@ export class WorkflowController {
       },
       startTimer: (phase: Phase, durationSec: number, onDone: () => void) => {
         tickRef && (tickRef.total = durationSec);
-        const fullTotal = durationForPhaseSec(phase, settings);
+        const cfg = (this.currentSettings ?? settings) as WorkflowSettings;
+        const fullTotal = durationForPhaseSec(phase, cfg);
         const endTime = Date.now() + durationSec * 1000;
         // Initialize cache for resume visualization
         this.lastRemaining = durationSec;
@@ -161,20 +156,17 @@ export class WorkflowController {
         this.stopPauseBlink();
         this.logDebug('[TIMER] start', { phase, durationSec, fullTotal, endTime });
         try {
-          action.setSettings({
-            ...settings,
-            isRunning: true,
-            currentPhase: phase,
-            remainingTime: durationSec,
-            endTime
-          });
+          const base = this.currentSettings ?? settings;
+          const next = { ...base, isRunning: true, currentPhase: phase, remainingTime: durationSec, endTime };
+          action.setSettings(next as any);
+          this.currentSettings = next;
         } catch {}
         this.deps.timer.start(
           this.actionId,
           durationSec,
           async (remaining) => {
             this.logTrace('[TIMER] tick', { remaining });
-            await (this.wf?.ctx ? this.createPorts(action, settings).updateRunning(remaining, fullTotal, phase) : Promise.resolve());
+            await (this.wf?.ctx ? this.createPorts(action, this.currentSettings ?? settings).updateRunning(remaining, fullTotal, phase) : Promise.resolve());
           },
           async () => {
             this.logDebug('[TIMER] complete dispatch');
@@ -234,6 +226,7 @@ export class WorkflowController {
     }
 
     this.logDebug('[WF] init', { initial, phase: ctx.phase, running: ctx.running, pausedRemaining: ctx.remaining });
+    this.currentSettings = settings;
     this.wf = new Workflow(
       ctx,
       this.createPorts(action, settings),
@@ -245,6 +238,7 @@ export class WorkflowController {
 
   async appear(action: any, settings: WorkflowSettings): Promise<void> {
     if (!this.wf) this.init(action, settings);
+    this.currentSettings = settings;
     const wasRunning = this.wf!.ctx.running;
     const hadEnd = typeof (settings as any).endTime === 'number';
     const expired = wasRunning && hadEnd && (settings as any).endTime <= Date.now();
@@ -289,6 +283,7 @@ export class WorkflowController {
     if (!this.wf) this.init(action, settings);
     // Ensure latest settings in context
     this.wf!.ctx.settings = settings;
+    this.currentSettings = settings;
     // If currently running, snapshot remaining before dispatch so pausedInFlight can show it
     const runningStates = new Set(['workRunning','shortBreakRunning','longBreakRunning']);
     const wasRunning = runningStates.has((this.wf as any).current);
@@ -305,6 +300,7 @@ export class WorkflowController {
   async longPress(action: any, settings: WorkflowSettings): Promise<void> {
     if (!this.wf) this.init(action, settings);
     this.wf!.ctx.settings = settings;
+    this.currentSettings = settings;
     this.logDebug('[INPUT] longPress (reset)');
     await this.wf!.dispatch({ type: 'LONG_PRESS' });
   }
@@ -313,5 +309,6 @@ export class WorkflowController {
     if (!this.wf) this.init(action, settings);
     this.wf!.ctx.settings = settings;
     this.logDebug('[WF] settingsChanged', { pauseAtEnd: settings.pauseAtEndOfEachTimer, cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak });
+    this.currentSettings = settings;
   }
 }
