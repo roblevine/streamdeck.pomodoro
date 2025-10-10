@@ -209,35 +209,44 @@
 </head>
 
 <body>
-    <sdpi-item label="Work Duration (mm:ss)">
-        <sdpi-textfield setting="workDuration" type="text" pattern="\d{1,3}:\d{2}" value="00:10" placeholder="00:10"></sdpi-textfield>
-    </sdpi-item>
-    <sdpi-item label="Short Break Duration (mm:ss)">
-        <sdpi-textfield setting="shortBreakDuration" type="text" pattern="\d{1,3}:\d{2}" value="00:02" placeholder="00:02"></sdpi-textfield>
-    </sdpi-item>
-    <sdpi-item label="Long Break Duration (mm:ss)">
-        <sdpi-textfield setting="longBreakDuration" type="text" pattern="\d{1,3}:\d{2}" value="00:05" placeholder="00:05"></sdpi-textfield>
-    </sdpi-item>
-    <sdpi-item label="Cycles Before Long Break">
-        <sdpi-textfield setting="cyclesBeforeLongBreak" type="number" min="1" max="10" value="4" placeholder="4"></sdpi-textfield>
-    </sdpi-item>
-    <sdpi-item label="Pause At End Of Each Phase">
-        <sdpi-checkbox setting="pauseAtEndOfEachTimer" value="true" checked></sdpi-checkbox>
-    </sdpi-item>
-    <sdpi-item label="Completion Hold (seconds)">
-        <sdpi-textfield setting="completionHoldSeconds" type="number" min="0" max="10" value="2" placeholder="2"></sdpi-textfield>
-    </sdpi-item>
-    <sdpi-item label="Enable Sound">
-        <sdpi-checkbox setting="enableSound" value="true"></sdpi-checkbox>
-    </sdpi-item>
-    <sdpi-item label="Work End Sound (.wav)">
-        <sdpi-file id="workSoundFile" setting="workEndSoundPath" accept=".wav" placeholder="Select work period end sound"></sdpi-file>
-        <sdpi-button id="workPreviewBtn" onclick="previewWorkSound()">Preview</sdpi-button>
-    </sdpi-item>
-    <sdpi-item label="Break End Sound (.wav)">
-        <sdpi-file id="breakSoundFile" setting="breakEndSoundPath" accept=".wav" placeholder="Select break end sound"></sdpi-file>
-        <sdpi-button id="breakPreviewBtn" onclick="previewBreakSound()">Preview</sdpi-button>
-    </sdpi-item>
+    <!-- Timer Settings Group -->
+    <sdpi-group label="Timer Settings">
+        <sdpi-item label="Work Duration (mm:ss)">
+            <sdpi-textfield setting="workDuration" type="text" pattern="\d{1,3}:\d{2}" value="00:10" placeholder="00:10"></sdpi-textfield>
+        </sdpi-item>
+        <sdpi-item label="Short Break Duration (mm:ss)">
+            <sdpi-textfield setting="shortBreakDuration" type="text" pattern="\d{1,3}:\d{2}" value="00:02" placeholder="00:02"></sdpi-textfield>
+        </sdpi-item>
+        <sdpi-item label="Long Break Duration (mm:ss)">
+            <sdpi-textfield setting="longBreakDuration" type="text" pattern="\d{1,3}:\d{2}" value="00:05" placeholder="00:05"></sdpi-textfield>
+        </sdpi-item>
+        <sdpi-item label="Cycles Before Long Break">
+            <sdpi-textfield setting="cyclesBeforeLongBreak" type="number" min="1" max="10" value="4" placeholder="4"></sdpi-textfield>
+        </sdpi-item>
+        <sdpi-item label="Pause At End Of Each Phase">
+            <sdpi-checkbox setting="pauseAtEndOfEachTimer" value="true" checked></sdpi-checkbox>
+        </sdpi-item>
+        <sdpi-item label="Completion Hold (seconds)">
+            <sdpi-textfield setting="completionHoldSeconds" type="number" min="0" max="10" value="2" placeholder="2"></sdpi-textfield>
+        </sdpi-item>
+    </sdpi-group>
+
+    <sdpi-separator></sdpi-separator>
+
+    <!-- Sound Settings Group -->
+    <sdpi-group label="Sound Settings">
+        <sdpi-item label="Enable Sound">
+            <sdpi-checkbox setting="enableSound" value="true"></sdpi-checkbox>
+        </sdpi-item>
+        <sdpi-item label="Work End Sound (.wav)">
+            <sdpi-file id="workSoundFile" setting="workEndSoundPath" accept=".wav" placeholder="Select work period end sound"></sdpi-file>
+            <sdpi-button id="workPreviewBtn" onclick="previewWorkSound()">Preview</sdpi-button>
+        </sdpi-item>
+        <sdpi-item label="Break End Sound (.wav)">
+            <sdpi-file id="breakSoundFile" setting="breakEndSoundPath" accept=".wav" placeholder="Select break end sound"></sdpi-file>
+            <sdpi-button id="breakPreviewBtn" onclick="previewBreakSound()">Preview</sdpi-button>
+        </sdpi-item>
+    </sdpi-group>
     <sdpi-item label="Info">
         <span>
             Configure your Pomodoro cycle. Enter durations in mm:ss format (e.g., 25:00 for 25 minutes).
