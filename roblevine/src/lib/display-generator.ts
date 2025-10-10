@@ -51,15 +51,15 @@ export class DisplayGenerator {
 		const percentage = remainingSeconds / totalSeconds;
 		const color = colorOverride ?? this.getPhaseColor(phase, isRunning, percentage);
 		const path = this.calculateArcPath(percentage);
-		const mainFontSize = 26; // time (slightly smaller)
-		const subFontSize = 16;  // cycle label
-		const mainY = this.center + 10; // adjust baseline for smaller font
-		const subY = mainY + 20;
+		const mainFontSize = 28; // time (smaller to make room)
+		const subFontSize = 20;  // cycle label (bigger for readability)
+		const mainY = this.center + 6; // adjust baseline
+		const subY = mainY + 22;
 		return `<svg width="${this.size}" height="${this.size}" xmlns="http://www.w3.org/2000/svg">
 			<rect width="${this.size}" height="${this.size}" fill="#1a1a1a"/>
 			${path ? `<path d="${path}" stroke="${color}" stroke-width="${this.strokeWidth}" fill="none" stroke-linecap="round"/>` : ''}
 			<text x="${this.center}" y="${mainY}" text-anchor="middle" fill="#FFFFFF" font-family="Segoe UI, Arial, sans-serif" font-size="${mainFontSize}" font-weight="600">${mainText}</text>
-			${subText ? `<text x="${this.center}" y="${subY}" text-anchor="middle" fill="#BBBBBB" font-family="Segoe UI, Arial, sans-serif" font-size="${subFontSize}" font-weight="500">${subText}</text>` : ''}
+			${subText ? `<text x="${this.center}" y="${subY}" text-anchor="middle" fill="#E5E5E5" font-family="Segoe UI, Arial, sans-serif" font-size="${subFontSize}" font-weight="700" letter-spacing="0.5px">${subText}</text>` : ''}
 		</svg>`;
 	}
 
