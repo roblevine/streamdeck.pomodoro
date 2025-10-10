@@ -117,3 +117,6 @@ Completion Summary
 
 Post-Completion Notes
 - Optional next: lightweight transition tests and small README/PI doc updates for short/long press behavior.
+ - Config vs State separation applied: PI config persists; runtime (phase, remaining, running) is in-memory only and resets on long-press or deletion.
+ - In-session resume across appear/disappear without persisting runtime to settings.
+ - Color scheme simplified (blue work, dark green short break, light green long break). Completion hold added with spinning dashed ring; runs concurrently with sounds and extends hold if needed.

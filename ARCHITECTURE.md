@@ -69,10 +69,9 @@ The Property Inspector uses raw WebSocket API to communicate with the plugin:
 
 ### Logging
 
-The SDK logger is set to `TRACE` level in development to capture all Stream Deck communication. Logs can be viewed at:
-
-* **macOS**: `~/Library/Logs/ElgatoStreamDeck/StreamDeck.json` (JSON format for debugging WebSocket messages)
-* **Plugin-specific logs**: Would appear at `~/Library/Logs/ElgatoStreamDeck/uk.co.roblevine.streamdeck.pomodoro.sdPlugin/logs/` if created
+- Default log level: `DEBUG`
+- For deep diagnostics, temporarily switch to `TRACE`
+- Logs are written via `streamDeck.logger`
 
 ## TypeScript Configuration
 
@@ -91,10 +90,11 @@ The SDK logger is set to `TRACE` level in development to capture all Stream Deck
 
 ### Pomodoro Cycle Management
 
-* Work periods, short breaks, and long breaks
-* Automatic phase transitions
-* Configurable cycle parameters (durations, cycles before long break)
-* State persists across Stream Deck restarts
+- Work periods, short breaks, and long breaks
+- Automatic phase transitions
+- Configurable cycle parameters (durations, cycles before long break)
+- In-session resume across appear/disappear (page/profile switches)
+- Runtime state is not persisted across deletion; PI config is
 
 ### Audio Notifications
 
@@ -106,10 +106,26 @@ The SDK logger is set to `TRACE` level in development to capture all Stream Deck
 
 ### Visual Feedback
 
-* Dynamic SVG-based donut progress indicator
-* Color-coded states (blue/green/orange/red)
-* Time display in MM:SS format
-* Updates every second during countdown
+- Dynamic SVG-based donut progress indicator
+- Static color scheme:
+  - Blue: work, Dark Green: short break, Light Green: long break
+- Paused mid-timer: ring blinks phase/red
+- Completion: spinning dashed white ring with "Done" during configurable hold; sound and animation run concurrently
+- Time display in MM:SS; updates every second during countdown
+
+## State Management
+
+### Config vs Runtime
+
+- ConfigSettings (persisted via PI): durations, cyclesBeforeLongBreak, pauseAtEndOfEachTimer, enableSound, workEndSoundPath, breakEndSoundPath, completionHoldSeconds
+- RuntimeState (in-memory only): phase, cycleIndex, running, remaining, pendingNext
+- Ctx = RuntimeState + ConfigSettings
+
+### Lifecycle
+
+- onWillAppear (fresh): initialize controller/workflow with neutral state (pausedNext/work)
+- onWillAppear (existing): rebind action, re-render current state without restarting timers
+- onWillDisappear: no cleanup (to retain in-session state); long-press reset clears runtime
 
 ## Platform Support
 

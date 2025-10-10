@@ -4,25 +4,24 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
 
 ## Features
 
-- **Pomodoro Cycle Management**: Full Pomodoro technique support with work periods, short breaks, and long breaks
-- **Configurable Durations**: Customize work, short break, and long break durations (default: 25:00 work, 5:00 short break, 15:00 long break)
-- **Automatic Phase Transitions**: Automatically advances through work → short break → work → long break cycle
-- **Visual Countdown Display**: Dynamic donut-style circular progress indicator that depletes as time runs out
-- **Color-Coded States**:
-  - 🔵 Blue: Timer stopped/ready
-  - 🟢 Green: Timer running (>25% remaining)
-  - 🟠 Orange: Warning state (<25% remaining)
-  - 🔴 Red: Critical state (<10% remaining)
-- **Audio Notifications**: Configurable sound alerts when work periods and breaks complete
-  - Custom WAV file support
+- Pomodoro cycle with work, short break, and long break
+- Configurable durations and cycles-before-long-break
+- Auto-advance between phases with optional boundary pause
+- Visual donut countdown with static color scheme
+  - Blue: Work
+  - Dark Green: Short break
+  - Light Green: Long break
+- Pause controls
+  - Short press: pause/resume mid-timer (ring blinks phase/red while paused)
+  - Long press (>2s): full reset to start
+- Completion feedback
+  - Spinning dashed white ring with "Done" during a configurable hold
+  - Sound and animation run concurrently; hold extends if sound is longer
+- Audio notifications (WAV)
   - Separate sounds for work completion and break completion
-  - Preview buttons to test sounds before use
-  - Enable/disable toggle
-- **Start/Stop Control**: Press the button to start or stop the timer
-- **Persistent State**: Timer state persists even when the action is hidden or Stream Deck restarts
-- **Time Display**: Shows remaining time in MM:SS format
-
-## Requirements
+  - Preview buttons and enable/disable toggle
+- In-session resume when hidden/shown (page/profile switches); runtime is not persisted across deletion
+- Time display in MM:SS## Requirements
 
 - **Stream Deck Software**: Version 6.5 or higher
 - **Operating System**:
@@ -49,15 +48,26 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
 
 Click on the Pomodoro Timer button in Stream Deck to open the Property Inspector and configure:
 
-- **Work Duration**: Set work period length in mm:ss format (default: 25:00)
-- **Short Break Duration**: Set short break length in mm:ss format (default: 5:00)
-- **Long Break Duration**: Set long break length in mm:ss format (default: 15:00)
-- **Cycles Before Long Break**: Number of work/short break cycles before a long break (default: 4)
-- **Enable Sound**: Toggle audio notifications on/off
-- **Work End Sound**: Select a WAV file to play when work periods complete (with preview button)
-- **Break End Sound**: Select a WAV file to play when breaks complete (with preview button)
+- Work Duration (mm:ss)
+- Short Break Duration (mm:ss)
+- Long Break Duration (mm:ss)
+- Cycles Before Long Break
+- Pause At End Of Each Phase (toggle)
+- Completion Hold (seconds)
+- Enable Sound (toggle)
+- Work End Sound (.wav)
+- Break End Sound (.wav)
 
-## Development
+### Behavior Summary
+
+- Short press pauses/resumes mid-timer; long press (>2s) resets timer and cycle count
+- If "Pause At End Of Each Phase" is on, next phase waits for a press; otherwise auto-starts
+- When a timer completes, "Done" shows with a spinning dashed ring; sound (if enabled) plays in parallel; the hold lasts at least the configured seconds, longer if the sound is still playing
+
+### Config vs State
+
+- Config settings (PI): durations, cycles, pause-at-end, audio toggles/paths, completion hold — persisted by Stream Deck
+- Runtime state (in-memory): phase, cycleIndex, running, remaining — not written to settings; cleared on long-press reset and when the action is removed## Development
 
 ### Setup
 
@@ -187,3 +197,5 @@ Rob Levine
 ## License
 
 (License information to be added)
+
+
