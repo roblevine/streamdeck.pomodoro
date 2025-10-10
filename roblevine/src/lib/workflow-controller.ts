@@ -7,6 +7,7 @@ import { TimerManager } from "./timer-manager";
 import { DisplayGenerator } from "./display-generator";
 import { AudioPlayer } from "./audio-player";
 import { Ctx, Phase, Ports, Workflow, WorkflowSettings, durationForPhaseSec } from "./workflow";
+import { PomodoroCycle, type CycleConfig } from "./pomodoro-cycle";
 
 export interface ControllerDeps {
   timer: TimerManager;
@@ -75,6 +76,16 @@ export class WorkflowController {
       startTimer: (phase: Phase, durationSec: number, onDone: () => void) => {
         tickRef && (tickRef.total = durationSec);
         this.deps.timer.setDuration(this.actionId, durationSec);
+        const endTime = Date.now() + durationSec * 1000;
+        try {
+          action.setSettings({
+            ...settings,
+            isRunning: true,
+            currentPhase: phase,
+            remainingTime: durationSec,
+            endTime
+          });
+        } catch {}
         this.deps.timer.start(
           this.actionId,
           durationSec,
@@ -96,18 +107,57 @@ export class WorkflowController {
   }
 
   init(action: any, settings: WorkflowSettings): void {
-    const ctx: Ctx = {
-      phase: 'work',
-      cycleIndex: settings?.cyclesBeforeLongBreak ? 0 : 0,
+    const phase: Phase = ((settings as any).currentPhase as Phase) ?? 'work';
+    const total = durationForPhaseSec(phase, settings);
+    const isRunning = (settings as any).isRunning === true;
+    const endTime = (settings as any).endTime as number | undefined;
+    const remaining = typeof (settings as any).remainingTime === 'number' ? (settings as any).remainingTime as number : undefined;
+
+    let initial: any = 'pausedNext';
+    let ctx: Ctx = {
+      phase,
+      cycleIndex: typeof (settings as any).currentCycleIndex === 'number' ? (settings as any).currentCycleIndex : 0,
       running: false,
+      remaining: undefined,
+      pendingNext: phase,
       settings
     };
-    this.wf = new Workflow(ctx, this.createPorts(action, settings));
+
+    const now = Date.now();
+    const hasRemaining = typeof remaining === 'number';
+    const pausedMid = !isRunning && hasRemaining && remaining! > 0 && remaining! < total && !endTime;
+
+    if (isRunning && endTime && endTime > now) {
+      // Resume running timer in current phase
+      initial = phase === 'work' ? 'workRunning' : (phase === 'shortBreak' ? 'shortBreakRunning' : 'longBreakRunning');
+      ctx.running = true;
+    } else if (isRunning && endTime && endTime <= now) {
+      // Expired while hidden: set to running and immediately handle completion after start
+      initial = phase === 'work' ? 'workRunning' : (phase === 'shortBreak' ? 'shortBreakRunning' : 'longBreakRunning');
+      ctx.running = true;
+    } else if (pausedMid) {
+      initial = 'pausedInFlight';
+      ctx.running = false;
+      ctx.remaining = Math.min(Math.max(remaining!, 0), total);
+    } else {
+      // Show full of current phase
+      initial = 'pausedNext';
+      ctx.running = false;
+      ctx.pendingNext = phase;
+    }
+
+    this.wf = new Workflow(ctx, this.createPorts(action, settings), initial);
   }
 
   async appear(action: any, settings: WorkflowSettings): Promise<void> {
     if (!this.wf) this.init(action, settings);
+    const wasRunning = this.wf!.ctx.running;
+    const hadEnd = typeof (settings as any).endTime === 'number';
+    const expired = wasRunning && hadEnd && (settings as any).endTime <= Date.now();
     await this.wf!.start();
+    if (expired) {
+      try { await this.wf!.dispatch({ type: 'TIMER_DONE' }); } catch (e) { streamDeck.logger.debug('appear TIMER_DONE dispatch failed', e as any); }
+    }
   }
 
   // Simple helpers for pause bookkeeping (remaining from settings)

@@ -50,59 +50,26 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	 */
 	override async onWillAppear(ev: WillAppearEvent<PomodoroSettings>): Promise<void> {
 		const { settings } = ev.payload;
-		const isRunning = settings.isRunning ?? false;
-
-		// Initialize Pomodoro cycle settings with defaults
-		const config: CycleConfig = {
-			workDuration: settings.workDuration ?? '00:10',
-			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
-			longBreakDuration: settings.longBreakDuration ?? '00:05',
-			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4
-		};
-		const currentPhase = settings.currentPhase ?? 'work';
-
-		// Calculate duration based on current phase
-		const duration = PomodoroCycle.getDurationForPhase(currentPhase, config) * 60;
-		const remainingTime = settings.remainingTime ?? duration;
-
-		// Store the duration for this action instance
-		this.timerManager.setDuration(ev.action.id, duration);
-
-		// Ensure settings are initialized
+		// Ensure minimal defaults exist once
 		if (!settings.workDuration) {
+			const initConfig: CycleConfig = {
+				workDuration: '00:10',
+				shortBreakDuration: '00:02',
+				longBreakDuration: '00:05',
+				cyclesBeforeLongBreak: 4
+			};
 			await ev.action.setSettings({
 				...settings,
-				...config,
+				...initConfig,
 				currentCycleIndex: 0,
 				currentPhase: 'work',
-				remainingTime: 10
+				remainingTime: PomodoroCycle.getDurationForPhase('work', initConfig) * 60,
+				isRunning: false,
+				pauseAtEndOfEachTimer: settings.pauseAtEndOfEachTimer ?? true
 			});
 		}
 
-		if (isRunning && settings.endTime) {
-			// Resume timer if it was running
-			const now = Date.now();
-			if (settings.endTime > now) {
-				this.timerManager.resume(
-					ev.action.id,
-					settings.endTime,
-					duration,
-					async (remaining) => {
-						await this.updateDisplay(ev.action, remaining, true, duration, currentPhase);
-						await ev.action.setSettings({ ...settings, remainingTime: remaining });
-					},
-					() => this.completeTimer(ev.action.id, ev)
-				);
-			} else {
-				// Timer expired while action was hidden
-				await this.completeTimer(ev.action.id, ev);
-			}
-		}
-
-		// Always update display to ensure proper initialization
-		await this.updateDisplay(ev.action, remainingTime, isRunning, duration, currentPhase);
-
-		// Initialize workflow controller (scaffold)
+		// Initialize/workflow-driven appear (resume/expired/full display)
 		try {
 			const controller = this.getController(ev.action.id);
 			await controller.appear(ev.action, {
