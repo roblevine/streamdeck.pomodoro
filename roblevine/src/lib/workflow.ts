@@ -200,7 +200,7 @@ export function createWorkflowConfig(): MachineConfig {
     },
 
     pausedNext: {
-      onEnter: [ async (ctx, ports) => { const next = ctx.pendingNext ?? 'work'; await ports.showPaused(durationForPhaseSec(next, ctx.settings), durationForPhaseSec(next, ctx.settings), next); } ],
+      onEnter: [ async (ctx, ports) => { const next = ctx.pendingNext ?? 'work'; await ports.showFull(next, durationForPhaseSec(next, ctx.settings)); } ],
       on: {
         SHORT_PRESS: [
           { target: 'longBreakRunning', cond: (ctx) => ctx.pendingNext === 'longBreak' },

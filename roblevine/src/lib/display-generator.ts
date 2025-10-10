@@ -52,24 +52,14 @@ export class DisplayGenerator {
 		isRunning: boolean,
 		percentage: number
 	): string {
+		// Static color scheme (no urgency shifts):
+		// work: Blue, shortBreak: Dark Green, longBreak: Light Green
 		const phaseColors = {
-			work: "#2196F3",       // Blue
-			shortBreak: "#4CAF50", // Green
-			longBreak: "#9C27B0"   // Purple
+			work: "#2196F3",      // Blue
+			shortBreak: "#2E7D32", // Dark Green
+			longBreak: "#8BC34A"   // Light Green
 		};
-
-		if (!isRunning) {
-			return phaseColors[phase];
-		}
-
-		// Add urgency indicators when running
-		if (percentage <= 0.10) {
-			return "#F44336"; // Red when less than 10% left
-		} else if (percentage <= 0.25) {
-			return "#FF9800"; // Orange when less than 25% left
-		} else {
-			return phaseColors[phase];
-		}
+		return phaseColors[phase];
 	}
 
 	/**
