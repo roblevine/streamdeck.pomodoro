@@ -1,6 +1,6 @@
 # Pomodoro Workflow State Machine
 
-Status: In Progress
+Status: Complete
 Date: 2025-10-10
 
 Decisions (Locked)
@@ -107,9 +107,13 @@ Progress
 - Routed SHORT_PRESS/LONG_PRESS through controller; TIMER_DONE dispatched from ports.
 - Action now classifies short vs long press and delegates to controller; controller initialized on appear.
 
-Remaining Checklist
-- Migrate onWillAppear resume/expiry handling fully into controller/workflow.
-- Route completion path entirely through workflow (remove legacy completeTimer path).
-- Honor pauseAtEndOfEachTimer at all boundaries (default true already encoded).
-- Add PI toggle for pauseAtEndOfEachTimer (default on) and persist.
-- Optional: add lightweight tests for key transitions (pause/resume, long break guard).
+Completion Summary
+- Pause/resume on short press implemented and verified.
+- Long-press reset (>2s) implemented from all states with watchdog.
+- Appear/resume/expiry handled by controller/workflow; legacy paths removed.
+- Boundary pause honored (pauseAtEndOfEachTimer, default true).
+- PI toggle for pauseAtEndOfEachTimer added and persisted.
+- Debug/trace logging added across inputs, workflow, and timers; default level set back to DEBUG.
+
+Post-Completion Notes
+- Optional next: lightweight transition tests and small README/PI doc updates for short/long press behavior.

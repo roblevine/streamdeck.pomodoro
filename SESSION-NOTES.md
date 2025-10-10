@@ -64,3 +64,44 @@ onKeyUp: () => {
   keyDownAt = null;
 }
 ```
+
+Date: 2025-10-10
+
+Decisions
+- Ship pause/resume on short press; long-press (>2s) reset from all states.
+- Controller is single source of truth for appear/resume/completion and transitions.
+- Keep default log level at DEBUG; use TRACE temporarily when diagnosing.
+
+Rationale
+- Centralizing workflow simplifies reasoning and future changes, while pause/resume improves UX.
+- Robust long-press detection via watchdog avoids misclassification on key-up timing drift.
+
+Rejected Alternatives
+- Relying on key-up elapsed only for long-press (less reliable across devices).
+- Continuing legacy in-action phase advancement (duplicated logic, harder to maintain).
+
+Pending Intents
+- Optional: add lightweight state transition tests.
+- Optional: update README/PI Info to mention short/long press behavior.
+
+Heuristics
+- Use cached lastRemaining from ticks to snapshot pause accurately; fall back to endTime, then settings.
+- Log high-level at DEBUG, chatty per-tick/UI at TRACE.
+
+Bootstrap Snippet
+```ts
+// Robust long-press in action
+let longPressTimer: NodeJS.Timeout | null = null;
+let longPressFired = false;
+const LONG_PRESS_MS = 2000;
+
+onKeyDown: () => {
+  longPressFired = false;
+  clearTimeout(longPressTimer!);
+  longPressTimer = setTimeout(() => { longPressFired = true; dispatch('LONG_PRESS'); }, LONG_PRESS_MS);
+}
+onKeyUp: () => {
+  clearTimeout(longPressTimer!);
+  if (!longPressFired) dispatch('SHORT_PRESS');
+}
+```
