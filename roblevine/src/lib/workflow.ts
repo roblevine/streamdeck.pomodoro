@@ -49,11 +49,8 @@ export interface Ports {
   startTimer(phase: Phase, durationSec: number, onDone: () => void): void;
   stopTimer(): void;
 
-  // Audio
-  playWorkEnd(path?: string): void | Promise<void>;
-  playBreakEnd(path?: string): void | Promise<void>;
-  // Completion animation that shows a spinning dashed ring and 'Done'
-  showCompletion(durationMs: number): void | Promise<void>;
+  // Completion animation + sound (in parallel); must dispatch COMPLETE_ANIM_DONE when finished
+  showCompletionWithSound(kind: 'work' | 'break', durationMs: number): void | Promise<void>;
 }
 
 export type ActionFn = (ctx: Ctx, ports: Ports) => void | Promise<void>;
@@ -121,17 +118,12 @@ const startTimerForCurrentPhase: ActionFn = async (ctx, ports) => {
   ports.startTimer(ctx.phase, effective, () => { /* controller dispatches TIMER_DONE */ });
 };
 const stopTimer: ActionFn = async (ctx, ports) => { ctx.running = false; ports.stopTimer(); };
-const playEndSound = (kind: 'work' | 'break'): ActionFn => async (ctx, ports) => {
-  if (!ctx.settings.enableSound) return;
-  if (kind === 'work') await ports.playWorkEnd(ctx.settings.workEndSoundPath);
-  else await ports.playBreakEnd(ctx.settings.breakEndSoundPath);
-};
-const runCompletionHold: ActionFn = async (ctx, ports) => {
+const runCompletionEffects = (kind: 'work' | 'break'): ActionFn => async (ctx, ports) => {
   const seconds = typeof (ctx.settings as any).completionHoldSeconds === 'number'
     ? (ctx.settings as any).completionHoldSeconds
     : 2;
   const ms = Math.max(0, Math.round(seconds * 1000));
-  await ports.showCompletion(ms);
+  await ports.showCompletionWithSound(kind, ms);
 };
 const setPendingNext = (phase: Phase): ActionFn => async (ctx) => { ctx.pendingNext = phase; };
 const incCycle: ActionFn = async (ctx) => { ctx.cycleIndex += 1; };
@@ -192,7 +184,7 @@ export function createWorkflowConfig(): MachineConfig {
     },
 
     workComplete: {
-      onEnter: [ stopTimer, playEndSound('work'), async (ctx) => { ctx.pendingNext = longBreakDue(ctx) ? 'longBreak' : 'shortBreak'; }, incCycle, runCompletionHold ],
+      onEnter: [ stopTimer, async (ctx) => { ctx.pendingNext = longBreakDue(ctx) ? 'longBreak' : 'shortBreak'; }, incCycle, runCompletionEffects('work') ],
       on: {
         COMPLETE_ANIM_DONE: [
           { target: 'pausedNext', cond: pauseAtEnd },
@@ -203,14 +195,14 @@ export function createWorkflowConfig(): MachineConfig {
     },
 
     shortBreakComplete: {
-      onEnter: [ stopTimer, playEndSound('break'), setPendingNext('work'), runCompletionHold ],
+      onEnter: [ stopTimer, setPendingNext('work'), runCompletionEffects('break') ],
       on: {
         COMPLETE_ANIM_DONE: [ { target: 'pausedNext', cond: pauseAtEnd }, { target: 'workRunning' } ]
       }
     },
 
     longBreakComplete: {
-      onEnter: [ stopTimer, playEndSound('break'), resetCycle, setPendingNext('work'), runCompletionHold ],
+      onEnter: [ stopTimer, resetCycle, setPendingNext('work'), runCompletionEffects('break') ],
       on: {
         COMPLETE_ANIM_DONE: [ { target: 'pausedNext', cond: pauseAtEnd }, { target: 'workRunning' } ]
       }

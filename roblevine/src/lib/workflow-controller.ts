@@ -46,8 +46,7 @@ export class WorkflowController {
   }
 
   private async runCompletionAnimation(action: any, durationMs: number) {
-    // Show 'Done' title, animate a spinning dashed white ring
-    const start = Date.now();
+    // Show 'Done' title, animate a spinning dashed white ring for durationMs
     let angle = 0;
     const stepMs = 100;
     const tick = async () => {
@@ -57,15 +56,16 @@ export class WorkflowController {
       await action.setImage(dataUrl);
       await action.setTitle('Done');
     };
-    // First frame
     await tick();
-    const interval = setInterval(async () => {
-      try { await tick(); } catch {}
-    }, stepMs);
-    setTimeout(async () => {
-      clearInterval(interval);
-      try { await this.wf?.dispatch({ type: 'COMPLETE_ANIM_DONE' }); } catch (e) { this.logDebug('[WF] COMPLETE_ANIM_DONE dispatch failed', e as any); }
-    }, Math.max(0, durationMs));
+    return new Promise<void>((resolve) => {
+      const interval = setInterval(async () => {
+        try { await tick(); } catch {}
+      }, stepMs);
+      setTimeout(() => {
+        clearInterval(interval);
+        resolve();
+      }, Math.max(0, durationMs));
+    });
   }
 
   constructor(actionId: string, deps?: Partial<ControllerDeps>) {
@@ -135,9 +135,20 @@ export class WorkflowController {
           });
         } catch {}
       },
-      showCompletion: async (durationMs: number) => {
+      showCompletionWithSound: async (kind: 'work' | 'break', durationMs: number) => {
         this.stopPauseBlink();
-        await this.runCompletionAnimation(action, durationMs);
+        // Start animation and sound in parallel; extend hold if sound is longer
+        const anim = this.runCompletionAnimation(action, durationMs);
+        let soundPath: string | undefined;
+        if ((settings as any).enableSound) {
+          if (kind === 'work') soundPath = (settings as any).workEndSoundPath as string | undefined;
+          else soundPath = (settings as any).breakEndSoundPath as string | undefined;
+        }
+        const soundPromise = (soundPath && soundPath.length > 0)
+          ? AudioPlayer.play(soundPath, 'timer-completion')
+          : Promise.resolve();
+        await Promise.all([anim, soundPromise]);
+        try { await this.wf?.dispatch({ type: 'COMPLETE_ANIM_DONE' }); } catch (e) { this.logDebug('[WF] COMPLETE_ANIM_DONE dispatch failed', e as any); }
       },
       startTimer: (phase: Phase, durationSec: number, onDone: () => void) => {
         tickRef && (tickRef.total = durationSec);
@@ -176,8 +187,7 @@ export class WorkflowController {
         this.logDebug('[TIMER] stop');
         this.deps.timer.stop(this.actionId);
       },
-      playWorkEnd: async (path?: string) => { await AudioPlayer.play(path ?? "", 'timer-completion'); },
-      playBreakEnd: async (path?: string) => { await AudioPlayer.play(path ?? "", 'timer-completion'); }
+      
     };
   }
 
