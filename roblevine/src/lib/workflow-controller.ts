@@ -86,12 +86,7 @@ export class WorkflowController {
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
         await action.setTitle(this.deps.display.formatTime(total));
-        try {
-          const base = this.currentSettings ?? settings;
-          const next = { ...base, isRunning: false, currentPhase: phase, remainingTime: total, endTime: undefined };
-          await action.setSettings(next as any);
-          this.currentSettings = next;
-        } catch {}
+        // Do not persist runtime state to settings
       },
       updateRunning: async (remaining: number, total: number, phase: Phase) => {
         // Cache last known values for accurate pause computation
@@ -104,12 +99,7 @@ export class WorkflowController {
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
         await action.setTitle(this.deps.display.formatTime(remaining));
-        try {
-          const base = this.currentSettings ?? settings;
-          const next = { ...base, isRunning: true, currentPhase: phase, remainingTime: remaining };
-          await action.setSettings(next as any);
-          this.currentSettings = next;
-        } catch {}
+        // Do not persist runtime state to settings
       },
       showPaused: async (remaining: number, total: number, phase: Phase) => {
         this.logTrace('[PI] showPaused', { phase, remaining, total });
@@ -121,12 +111,7 @@ export class WorkflowController {
           this.pauseBlinkOn = !this.pauseBlinkOn;
           try { await this.drawPausedFrame(action, remaining, total, phase); } catch {}
         }, 600);
-        try {
-          const base = this.currentSettings ?? settings;
-          const next = { ...base, isRunning: false, currentPhase: phase, remainingTime: remaining, endTime: undefined };
-          await action.setSettings(next as any);
-          this.currentSettings = next;
-        } catch {}
+        // Do not persist runtime state to settings
       },
       showCompletionWithSound: async (kind: 'work' | 'break', durationMs: number) => {
         this.stopPauseBlink();
@@ -155,12 +140,7 @@ export class WorkflowController {
         this.lastPhase = phase;
         this.stopPauseBlink();
         this.logDebug('[TIMER] start', { phase, durationSec, fullTotal, endTime });
-        try {
-          const base = this.currentSettings ?? settings;
-          const next = { ...base, isRunning: true, currentPhase: phase, remainingTime: durationSec, endTime };
-          action.setSettings(next as any);
-          this.currentSettings = next;
-        } catch {}
+        // Do not persist runtime state to settings
         this.deps.timer.start(
           this.actionId,
           durationSec,
@@ -184,47 +164,16 @@ export class WorkflowController {
   }
 
   init(action: any, settings: WorkflowSettings): void {
-    const phase: Phase = ((settings as any).currentPhase as Phase) ?? 'work';
-    const total = durationForPhaseSec(phase, settings);
-    const isRunning = (settings as any).isRunning === true;
-    const endTime = (settings as any).endTime as number | undefined;
-    const remaining = typeof (settings as any).remainingTime === 'number' ? (settings as any).remainingTime as number : undefined;
-
-    let initial: any = 'pausedNext';
-    let ctx: Ctx = {
-      phase,
-      cycleIndex: typeof (settings as any).currentCycleIndex === 'number' ? (settings as any).currentCycleIndex : 0,
+    // Always start new instances neutral (no persisted runtime state)
+    const ctx: Ctx = {
+      phase: 'work',
+      cycleIndex: 0,
       running: false,
       remaining: undefined,
-      pendingNext: phase,
+      pendingNext: 'work',
       settings
     };
-
-    const now = Date.now();
-    const hasRemaining = typeof remaining === 'number';
-    const pausedMid = !isRunning && hasRemaining && remaining! > 0 && remaining! < total && !endTime;
-
-    if (isRunning && endTime && endTime > now) {
-      // Resume running timer in current phase
-      initial = phase === 'work' ? 'workRunning' : (phase === 'shortBreak' ? 'shortBreakRunning' : 'longBreakRunning');
-      ctx.running = true;
-      // Resume correctness: use remaining derived from endTime
-      ctx.remaining = Math.ceil((endTime - now) / 1000);
-    } else if (isRunning && endTime && endTime <= now) {
-      // Expired while hidden: set to running and immediately handle completion after start
-      initial = phase === 'work' ? 'workRunning' : (phase === 'shortBreak' ? 'shortBreakRunning' : 'longBreakRunning');
-      ctx.running = true;
-    } else if (pausedMid) {
-      initial = 'pausedInFlight';
-      ctx.running = false;
-      ctx.remaining = Math.min(Math.max(remaining!, 0), total);
-    } else {
-      // Show full of current phase
-      initial = 'pausedNext';
-      ctx.running = false;
-      ctx.pendingNext = phase;
-    }
-
+    const initial: any = 'pausedNext';
     this.logDebug('[WF] init', { initial, phase: ctx.phase, running: ctx.running, pausedRemaining: ctx.remaining });
     this.currentSettings = settings;
     this.wf = new Workflow(
@@ -239,14 +188,9 @@ export class WorkflowController {
   async appear(action: any, settings: WorkflowSettings): Promise<void> {
     if (!this.wf) this.init(action, settings);
     this.currentSettings = settings;
-    const wasRunning = this.wf!.ctx.running;
-    const hadEnd = typeof (settings as any).endTime === 'number';
-    const expired = wasRunning && hadEnd && (settings as any).endTime <= Date.now();
-    this.logDebug('[WF] appear', { wasRunning, hadEnd, expired });
+    this.logDebug('[WF] appear', { wasRunning: this.wf!.ctx.running });
     await this.wf!.start();
-    if (expired) {
-      try { await this.wf!.dispatch({ type: 'TIMER_DONE' }); } catch (e) { streamDeck.logger.debug('appear TIMER_DONE dispatch failed', e as any); }
-    }
+    // No resume from persisted data
   }
 
   // Simple helpers for pause bookkeeping (remaining from settings)
@@ -265,16 +209,7 @@ export class WorkflowController {
       this.logTrace('[WF] computeRemaining (cached)', { remaining: this.lastRemaining });
       return Math.max(0, this.lastRemaining);
     }
-    const total = this.totalForPhase(phase, settings);
-    if (typeof settings?.endTime === 'number' && settings.endTime > Date.now()) {
-      const rem = Math.ceil((settings.endTime - Date.now()) / 1000);
-      this.logTrace('[WF] computeRemaining (endTime)', { remaining: rem });
-      return Math.min(Math.max(rem, 0), total);
-    }
-    if (typeof settings?.remainingTime === 'number') {
-      this.logTrace('[WF] computeRemaining (settings.remainingTime)', { remaining: settings.remainingTime });
-      return Math.min(Math.max(settings.remainingTime, 0), total);
-    }
+    const total = this.totalForPhase(phase, this.currentSettings ?? settings);
     this.logTrace('[WF] computeRemaining (default total)', { total });
     return total;
   }
