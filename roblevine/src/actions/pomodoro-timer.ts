@@ -84,8 +84,8 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	 * Clean up timer when action disappears
 	 */
 	override onWillDisappear(ev: WillDisappearEvent<PomodoroSettings>): void {
-		this.timerManager.cleanup(ev.action.id);
-		this.controllers.delete(ev.action.id);
+		// Do not cleanup to allow in-session resume across appear/disappear.
+		// Cleanup happens on plugin shutdown or when intentionally resetting via long press.
 	}
 
 	/**

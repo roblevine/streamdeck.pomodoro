@@ -21,6 +21,8 @@ export class WorkflowController {
   private lastTotal?: number;
   private lastPhase?: Phase;
   private currentSettings?: any;
+  private currentAction?: any;
+  private hasStarted = false;
   private logDebug(msg: string, data?: unknown) {
     try { streamDeck.logger.debug(msg, data as any); } catch { /* noop */ }
   }
@@ -78,14 +80,15 @@ export class WorkflowController {
   }
 
   createPorts(action: any, settings: WorkflowSettings, tickRef?: { total?: number }): Ports {
+    this.currentAction = action;
     return {
       showFull: async (phase: Phase, total: number) => {
         this.logDebug('[PI] showFull', { phase, total });
         this.stopPauseBlink();
         const svg = this.deps.display.generateDonutSVG(total, total, false, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
-        await action.setImage(dataUrl);
-        await action.setTitle(this.deps.display.formatTime(total));
+        await (this.currentAction ?? action).setImage(dataUrl);
+        await (this.currentAction ?? action).setTitle(this.deps.display.formatTime(total));
         // Do not persist runtime state to settings
       },
       updateRunning: async (remaining: number, total: number, phase: Phase) => {
@@ -97,8 +100,8 @@ export class WorkflowController {
         this.stopPauseBlink();
         const svg = this.deps.display.generateDonutSVG(remaining, total, true, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
-        await action.setImage(dataUrl);
-        await action.setTitle(this.deps.display.formatTime(remaining));
+        await (this.currentAction ?? action).setImage(dataUrl);
+        await (this.currentAction ?? action).setTitle(this.deps.display.formatTime(remaining));
         // Do not persist runtime state to settings
       },
       showPaused: async (remaining: number, total: number, phase: Phase) => {
@@ -106,17 +109,17 @@ export class WorkflowController {
         this.stopPauseBlink();
         // Draw first frame immediately, then blink between phase color and red
         this.pauseBlinkOn = false;
-        await this.drawPausedFrame(action, remaining, total, phase);
+        await this.drawPausedFrame((this.currentAction ?? action), remaining, total, phase);
         this.pauseBlinkTimer = setInterval(async () => {
           this.pauseBlinkOn = !this.pauseBlinkOn;
-          try { await this.drawPausedFrame(action, remaining, total, phase); } catch {}
+          try { await this.drawPausedFrame((this.currentAction ?? action), remaining, total, phase); } catch {}
         }, 600);
         // Do not persist runtime state to settings
       },
       showCompletionWithSound: async (kind: 'work' | 'break', durationMs: number) => {
         this.stopPauseBlink();
         // Start animation and sound in parallel; extend hold if sound is longer
-        const anim = this.runCompletionAnimation(action, durationMs);
+        const anim = this.runCompletionAnimation((this.currentAction ?? action), durationMs);
         let soundPath: string | undefined;
         const cur = this.currentSettings ?? settings;
         if ((cur as any).enableSound) {
@@ -141,12 +144,13 @@ export class WorkflowController {
         this.stopPauseBlink();
         this.logDebug('[TIMER] start', { phase, durationSec, fullTotal, endTime });
         // Do not persist runtime state to settings
+        this.hasStarted = true;
         this.deps.timer.start(
           this.actionId,
           durationSec,
           async (remaining) => {
             this.logTrace('[TIMER] tick', { remaining });
-            await (this.wf?.ctx ? this.createPorts(action, this.currentSettings ?? settings).updateRunning(remaining, fullTotal, phase) : Promise.resolve());
+            await (this.wf?.ctx ? this.createPorts((this.currentAction ?? action), this.currentSettings ?? settings).updateRunning(remaining, fullTotal, phase) : Promise.resolve());
           },
           async () => {
             this.logDebug('[TIMER] complete dispatch');
@@ -164,7 +168,7 @@ export class WorkflowController {
   }
 
   init(action: any, settings: WorkflowSettings): void {
-    // Always start new instances neutral (no persisted runtime state)
+    // Start neutral (runtime not persisted across deletion), but allow in-session reuse later
     const ctx: Ctx = {
       phase: 'work',
       cycleIndex: 0,
@@ -176,6 +180,7 @@ export class WorkflowController {
     const initial: any = 'pausedNext';
     this.logDebug('[WF] init', { initial, phase: ctx.phase, running: ctx.running, pausedRemaining: ctx.remaining });
     this.currentSettings = settings;
+    this.currentAction = action;
     this.wf = new Workflow(
       ctx,
       this.createPorts(action, settings),
@@ -186,11 +191,31 @@ export class WorkflowController {
   }
 
   async appear(action: any, settings: WorkflowSettings): Promise<void> {
-    if (!this.wf) this.init(action, settings);
+    if (!this.wf) {
+      this.init(action, settings);
+      this.currentSettings = settings;
+      this.logDebug('[WF] appear (fresh)');
+      await this.wf!.start();
+      this.hasStarted = true;
+      return;
+    }
+    // Rebind action and config, then re-render without restarting timers
+    this.currentAction = action;
     this.currentSettings = settings;
-    this.logDebug('[WF] appear', { wasRunning: this.wf!.ctx.running });
-    await this.wf!.start();
-    // No resume from persisted data
+    const phase = this.wf!.ctx.phase;
+    const total = durationForPhaseSec(phase, this.currentSettings);
+    if (this.deps.timer.isRunning(this.actionId) || this.wf!.ctx.running) {
+      const remaining = this.lastRemaining ?? total;
+      await this.createPorts(action, this.currentSettings).updateRunning(remaining, total, phase);
+    } else if ((this.wf as any).current === 'pausedInFlight') {
+      const remaining = Math.max(0, this.wf!.ctx.remaining ?? total);
+      await this.createPorts(action, this.currentSettings).showPaused(remaining, total, phase);
+    } else {
+      // pausedNext or idle-like
+      const next = (this.wf!.ctx.pendingNext ?? phase) as Phase;
+      const nextTotal = durationForPhaseSec(next, this.currentSettings);
+      await this.createPorts(action, this.currentSettings).showFull(next, nextTotal);
+    }
   }
 
   // Simple helpers for pause bookkeeping (remaining from settings)
