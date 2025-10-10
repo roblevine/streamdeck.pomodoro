@@ -3,6 +3,7 @@ import streamDeck from "@elgato/streamdeck";
 import { TimerManager } from "../lib/timer-manager";
 import { DisplayGenerator } from "../lib/display-generator";
 import { PomodoroCycle, type Phase, type CycleConfig, type CycleState } from "../lib/pomodoro-cycle";
+import { WorkflowController } from "../lib/workflow-controller";
 import { AudioPlayer } from "../lib/audio-player";
 import { PluginMessageObserver } from "../lib/plugin-message-observer";
 import { handlePreviewSound } from "../lib/message-handlers/preview-sound-handler";
@@ -19,6 +20,16 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	private messageObserver = new PluginMessageObserver(false);
     private keyDownAt: number | null = null;
     private readonly LONG_PRESS_MS = 700;
+    private controllers: Map<string, WorkflowController> = new Map();
+
+    private getController(actionId: string): WorkflowController {
+        let c = this.controllers.get(actionId);
+        if (!c) {
+            c = new WorkflowController(actionId, { timer: this.timerManager, display: this.displayGenerator });
+            this.controllers.set(actionId, c);
+        }
+        return c;
+    }
 
 	constructor() {
 		super();
@@ -90,6 +101,24 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 
 		// Always update display to ensure proper initialization
 		await this.updateDisplay(ev.action, remainingTime, isRunning, duration, currentPhase);
+
+		// Initialize workflow controller (scaffold)
+		try {
+			const controller = this.getController(ev.action.id);
+			await controller.appear(ev.action, {
+				workDuration: settings.workDuration ?? '00:10',
+				shortBreakDuration: settings.shortBreakDuration ?? '00:02',
+				longBreakDuration: settings.longBreakDuration ?? '00:05',
+				cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4,
+				pauseAtEndOfEachTimer: settings.pauseAtEndOfEachTimer ?? true,
+				enableSound: settings.enableSound,
+				workEndSoundPath: settings.workEndSoundPath,
+				breakEndSoundPath: settings.breakEndSoundPath
+			});
+		} catch (err) {
+			// Non-fatal: controller is additive for now
+			streamDeck.logger.debug('WorkflowController.appear failed (non-fatal)', err as any);
+		}
 	}
 
 	/**
@@ -97,6 +126,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	 */
 	override onWillDisappear(ev: WillDisappearEvent<PomodoroSettings>): void {
 		this.timerManager.cleanup(ev.action.id);
+		this.controllers.delete(ev.action.id);
 	}
 
 	/**
