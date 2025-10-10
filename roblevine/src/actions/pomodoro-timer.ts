@@ -19,7 +19,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	private displayGenerator = new DisplayGenerator();
 	private messageObserver = new PluginMessageObserver(false);
     private keyDownAt: number | null = null;
-    private readonly LONG_PRESS_MS = 700;
+    private readonly LONG_PRESS_MS = 2000;
     private controllers: Map<string, WorkflowController> = new Map();
 
     private getController(actionId: string): WorkflowController {

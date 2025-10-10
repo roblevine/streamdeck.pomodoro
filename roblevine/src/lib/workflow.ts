@@ -108,10 +108,13 @@ const showFullFor = (phase: Phase): ActionFn => async (ctx, ports) => {
   await ports.showFull(phase, total);
 };
 const startTimerForCurrentPhase: ActionFn = async (ctx, ports) => {
-  const total = durationForPhaseSec(ctx.phase, ctx.settings);
+  const fullTotal = durationForPhaseSec(ctx.phase, ctx.settings);
+  const effective = typeof ctx.remaining === 'number' && ctx.remaining > 0 && ctx.remaining < fullTotal
+    ? ctx.remaining
+    : fullTotal;
   ctx.running = true;
-  ctx.remaining = undefined;
-  ports.startTimer(ctx.phase, total, () => { /* controller dispatches TIMER_DONE */ });
+  ctx.remaining = undefined; // consume remaining on resume
+  ports.startTimer(ctx.phase, effective, () => { /* controller dispatches TIMER_DONE */ });
 };
 const stopTimer: ActionFn = async (ctx, ports) => { ctx.running = false; ports.stopTimer(); };
 const playEndSound = (kind: 'work' | 'break'): ActionFn => async (ctx, ports) => {
@@ -132,7 +135,10 @@ export function createWorkflowConfig(): MachineConfig {
   return {
     idle: {
       onEnter: [ setPhase('work'), showFullFor('work'), async (ctx) => { ctx.running = false; ctx.pendingNext = undefined; ctx.remaining = undefined; } ],
-      on: { SHORT_PRESS: { target: 'workRunning' } }
+      on: {
+        SHORT_PRESS: { target: 'workRunning' },
+        LONG_PRESS: { target: 'idle', actions: [ resetCycle ] }
+      }
     },
 
     workRunning: {
@@ -140,7 +146,7 @@ export function createWorkflowConfig(): MachineConfig {
       on: {
         TIMER_DONE: { target: 'workComplete' },
         SHORT_PRESS: { target: 'pausedInFlight', actions: [ stopTimer ] },
-        LONG_PRESS: { target: 'idle', actions: [ stopTimer ] }
+        LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle ] }
       }
     },
 
@@ -149,7 +155,7 @@ export function createWorkflowConfig(): MachineConfig {
       on: {
         TIMER_DONE: { target: 'shortBreakComplete' },
         SHORT_PRESS: { target: 'pausedInFlight', actions: [ stopTimer ] },
-        LONG_PRESS: { target: 'idle', actions: [ stopTimer ] }
+        LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle ] }
       }
     },
 
@@ -158,7 +164,7 @@ export function createWorkflowConfig(): MachineConfig {
       on: {
         TIMER_DONE: { target: 'longBreakComplete' },
         SHORT_PRESS: { target: 'pausedInFlight', actions: [ stopTimer ] },
-        LONG_PRESS: { target: 'idle', actions: [ stopTimer ] }
+        LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle ] }
       }
     },
 
@@ -170,7 +176,7 @@ export function createWorkflowConfig(): MachineConfig {
           { target: 'shortBreakRunning', cond: (ctx) => ctx.phase === 'shortBreak' },
           { target: 'longBreakRunning' } // phase === 'longBreak'
         ],
-        LONG_PRESS: { target: 'idle' }
+        LONG_PRESS: { target: 'idle', actions: [ resetCycle ] }
       }
     },
 
@@ -201,7 +207,7 @@ export function createWorkflowConfig(): MachineConfig {
           { target: 'shortBreakRunning', cond: (ctx) => ctx.pendingNext === 'shortBreak' },
           { target: 'workRunning' }
         ],
-        LONG_PRESS: { target: 'idle' }
+        LONG_PRESS: { target: 'idle', actions: [ resetCycle ] }
       }
     }
   };
@@ -265,4 +271,3 @@ export class Workflow {
     }
   }
 }
-

@@ -76,6 +76,7 @@ export class WorkflowController {
       startTimer: (phase: Phase, durationSec: number, onDone: () => void) => {
         tickRef && (tickRef.total = durationSec);
         this.deps.timer.setDuration(this.actionId, durationSec);
+        const fullTotal = durationForPhaseSec(phase, settings);
         const endTime = Date.now() + durationSec * 1000;
         try {
           action.setSettings({
@@ -90,7 +91,7 @@ export class WorkflowController {
           this.actionId,
           durationSec,
           async (remaining) => {
-            await (this.wf?.ctx ? this.createPorts(action, settings).updateRunning(remaining, durationSec, phase) : Promise.resolve());
+            await (this.wf?.ctx ? this.createPorts(action, settings).updateRunning(remaining, fullTotal, phase) : Promise.resolve());
           },
           async () => {
             try { onDone(); } catch {}
