@@ -37,6 +37,33 @@ export class DisplayGenerator {
 	}
 
 	/**
+	 * Generate donut with centered mainText (time) and smaller subText (e.g., cycle like 1/4)
+	 */
+	generateDonutWithTextsSVG(
+		remainingSeconds: number,
+		totalSeconds: number,
+		isRunning: boolean,
+		phase: 'work' | 'shortBreak' | 'longBreak' = 'work',
+		mainText: string,
+		subText?: string,
+		colorOverride?: string
+	): string {
+		const percentage = remainingSeconds / totalSeconds;
+		const color = colorOverride ?? this.getPhaseColor(phase, isRunning, percentage);
+		const path = this.calculateArcPath(percentage);
+		const mainFontSize = 34; // time
+		const subFontSize = 16;  // cycle label
+		const mainY = this.center + 10; // slightly below center to account for font metrics
+		const subY = mainY + 22;
+		return `<svg width="${this.size}" height="${this.size}" xmlns="http://www.w3.org/2000/svg">
+			<rect width="${this.size}" height="${this.size}" fill="#1a1a1a"/>
+			${path ? `<path d="${path}" stroke="${color}" stroke-width="${this.strokeWidth}" fill="none" stroke-linecap="round"/>` : ''}
+			<text x="${this.center}" y="${mainY}" text-anchor="middle" fill="#FFFFFF" font-family="Segoe UI, Arial, sans-serif" font-size="${mainFontSize}" font-weight="600">${mainText}</text>
+			${subText ? `<text x="${this.center}" y="${subY}" text-anchor="middle" fill="#BBBBBB" font-family="Segoe UI, Arial, sans-serif" font-size="${subFontSize}" font-weight="500">${subText}</text>` : ''}
+		</svg>`;
+	}
+
+	/**
 	 * Generate a base64 data URL from SVG
 	 */
 	svgToDataUrl(svg: string): string {

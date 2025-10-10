@@ -42,10 +42,12 @@ export class WorkflowController {
 
   private async drawPausedFrame(action: any, remaining: number, total: number, phase: Phase) {
     const color = this.pauseBlinkOn ? '#F44336' /* red */ : undefined; // undefined uses base phase color
-    const svg = this.deps.display.generateDonutSVG(remaining, total, false, phase, color);
+    const main = this.deps.display.formatTime(remaining);
+    const sub = this.getCycleLabel(phase);
+    const svg = this.deps.display.generateDonutWithTextsSVG(remaining, total, false, phase, main, sub, color);
     const dataUrl = this.deps.display.svgToDataUrl(svg);
     await action.setImage(dataUrl);
-    await action.setTitle(this.deps.display.formatTime(remaining));
+    try { await action.setTitle(""); } catch {}
   }
 
   private async runCompletionAnimation(action: any, durationMs: number) {
@@ -79,16 +81,28 @@ export class WorkflowController {
     };
   }
 
+  private getCycleLabel(phase: Phase): string | undefined {
+    const totalCycles = this.currentSettings?.cyclesBeforeLongBreak ?? 4;
+    let idx = this.wf?.ctx.cycleIndex ?? 0;
+    if (phase === 'work') idx = idx + 1;
+    if (phase === 'longBreak') idx = totalCycles;
+    if (idx < 0) idx = 0;
+    if (idx > totalCycles) idx = totalCycles;
+    return `${idx}/${totalCycles}`;
+  }
+
   createPorts(action: any, settings: ConfigSettings, tickRef?: { total?: number }): Ports {
     this.currentAction = action;
     return {
       showFull: async (phase: Phase, total: number) => {
         this.logDebug('[PI] showFull', { phase, total });
         this.stopPauseBlink();
-        const svg = this.deps.display.generateDonutSVG(total, total, false, phase);
+        const main = this.deps.display.formatTime(total);
+        const sub = this.getCycleLabel(phase);
+        const svg = this.deps.display.generateDonutWithTextsSVG(total, total, false, phase, main, sub);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await (this.currentAction ?? action).setImage(dataUrl);
-        await (this.currentAction ?? action).setTitle(this.deps.display.formatTime(total));
+        try { await (this.currentAction ?? action).setTitle(""); } catch {}
         // Do not persist runtime state to settings
       },
       updateRunning: async (remaining: number, total: number, phase: Phase) => {
@@ -98,10 +112,12 @@ export class WorkflowController {
         this.lastPhase = phase;
         this.logTrace('[PI] updateRunning', { phase, remaining, total });
         this.stopPauseBlink();
-        const svg = this.deps.display.generateDonutSVG(remaining, total, true, phase);
+        const main = this.deps.display.formatTime(remaining);
+        const sub = this.getCycleLabel(phase);
+        const svg = this.deps.display.generateDonutWithTextsSVG(remaining, total, true, phase, main, sub);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await (this.currentAction ?? action).setImage(dataUrl);
-        await (this.currentAction ?? action).setTitle(this.deps.display.formatTime(remaining));
+        try { await (this.currentAction ?? action).setTitle(""); } catch {}
         // Do not persist runtime state to settings
       },
       showPaused: async (remaining: number, total: number, phase: Phase) => {
