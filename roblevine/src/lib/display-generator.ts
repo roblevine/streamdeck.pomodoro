@@ -51,8 +51,8 @@ export class DisplayGenerator {
 		const percentage = remainingSeconds / totalSeconds;
 		const color = colorOverride ?? this.getPhaseColor(phase, isRunning, percentage);
 		const path = this.calculateArcPath(percentage);
-		const mainFontSize = 28; // time (smaller to make room)
-		const subFontSize = 20;  // cycle label (bigger for readability)
+		const mainFontSize = 26; // time (Option A)
+		const subFontSize = 18;  // cycle label (Option A)
 		const mainY = this.center + 6; // adjust baseline
 		const subY = mainY + 22;
 		return `<svg width="${this.size}" height="${this.size}" xmlns="http://www.w3.org/2000/svg">
