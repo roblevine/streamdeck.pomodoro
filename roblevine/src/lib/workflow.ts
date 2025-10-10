@@ -216,26 +216,35 @@ export function createWorkflowConfig(): MachineConfig {
 export class Workflow {
   private config: MachineConfig;
   private state: StateKey;
+  private logger?: { debug: (msg: string, data?: unknown) => void };
   constructor(
     public ctx: Ctx,
     private ports: Ports,
     initial: StateKey = 'idle',
-    config: MachineConfig = createWorkflowConfig()
+    config: MachineConfig = createWorkflowConfig(),
+    logger?: { debug: (msg: string, data?: unknown) => void }
   ) {
     this.config = config;
     this.state = initial;
+    this.logger = logger;
   }
 
   get current(): StateKey { return this.state; }
 
-  async start(): Promise<void> { await this.runOnEnter(this.state); await this.runAlways(); }
+  async start(): Promise<void> {
+    this.logger?.debug('[WF] start', { state: this.state, ctx: { phase: this.ctx.phase, cycleIndex: this.ctx.cycleIndex } });
+    await this.runOnEnter(this.state);
+    await this.runAlways();
+  }
 
   async dispatch(ev: Event): Promise<void> {
+    this.logger?.debug('[WF] dispatch', { event: ev.type, state: this.state });
     const node = this.config[this.state];
     const handler = node.on?.[ev.type];
     const transitions: Transition[] = Array.isArray(handler) ? handler : handler ? [handler] : [];
     for (const t of transitions) {
       if (!t.cond || t.cond(this.ctx)) {
+        this.logger?.debug('[WF] transition', { from: this.state, to: t.target, on: ev.type });
         if (t.actions) for (const a of t.actions) await a(this.ctx, this.ports);
         await this.transitionTo(t.target);
         return;
@@ -244,6 +253,7 @@ export class Workflow {
   }
 
   private async transitionTo(target: StateKey): Promise<void> {
+    this.logger?.debug('[WF] enter', { state: target });
     this.state = target;
     await this.runOnEnter(target);
     await this.runAlways();
@@ -251,6 +261,7 @@ export class Workflow {
 
   private async runOnEnter(s: StateKey): Promise<void> {
     const actions = this.config[s].onEnter ?? [];
+    this.logger?.debug('[WF] onEnter actions', { state: s, count: actions.length });
     for (const a of actions) await a(this.ctx, this.ports);
   }
 
@@ -261,6 +272,7 @@ export class Workflow {
       let taken = false;
       for (const t of always) {
         if (!t.cond || t.cond(this.ctx)) {
+          this.logger?.debug('[WF] always transition', { from: this.state, to: t.target });
           if (t.actions) for (const a of t.actions) await a(this.ctx, this.ports);
           await this.transitionTo(t.target);
           taken = true;

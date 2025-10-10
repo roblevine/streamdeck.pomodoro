@@ -131,10 +131,12 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		// Start long-press watchdog to trigger reset without relying on keyup timing
 		try { if (this.longPressTimer) { clearTimeout(this.longPressTimer); this.longPressTimer = null; } } catch {}
 		this.longPressFired = false;
+		try { streamDeck.logger.debug('[INPUT] keyDown'); } catch {}
 		const settingsForPress = this.extractWorkflowSettings(ev.payload.settings);
 		const actionRef = ev.action;
 		this.longPressTimer = setTimeout(async () => {
 			this.longPressFired = true;
+			try { streamDeck.logger.debug('[INPUT] longPress watchdog fired'); } catch {}
 			try {
 				await this.getController(actionRef.id).longPress(actionRef, settingsForPress);
 			} catch {}
@@ -150,6 +152,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		if (this.longPressTimer) { clearTimeout(this.longPressTimer); this.longPressTimer = null; }
 		if (this.longPressFired) { this.longPressFired = false; return; }
 		const elapsed = startedAt ? Date.now() - startedAt : 0;
+		try { streamDeck.logger.debug('[INPUT] keyUp', { elapsed }); } catch {}
 		const controller = this.getController(ev.action.id);
 		if (elapsed >= this.LONG_PRESS_MS) {
 			await controller.longPress(ev.action, this.extractWorkflowSettings(ev.payload.settings));

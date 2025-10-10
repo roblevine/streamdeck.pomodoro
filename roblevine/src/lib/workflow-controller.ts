@@ -21,6 +21,9 @@ export class WorkflowController {
   private lastRemaining?: number;
   private lastTotal?: number;
   private lastPhase?: Phase;
+  private logDebug(msg: string, data?: unknown) {
+    try { streamDeck.logger.debug(msg, data as any); } catch { /* noop */ }
+  }
 
   constructor(actionId: string, deps?: Partial<ControllerDeps>) {
     this.actionId = actionId;
@@ -33,6 +36,7 @@ export class WorkflowController {
   createPorts(action: any, settings: WorkflowSettings, tickRef?: { total?: number }): Ports {
     return {
       showFull: async (phase: Phase, total: number) => {
+        this.logDebug('[PI] showFull', { phase, total });
         const svg = this.deps.display.generateDonutSVG(total, total, false, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
@@ -52,6 +56,7 @@ export class WorkflowController {
         this.lastRemaining = remaining;
         this.lastTotal = total;
         this.lastPhase = phase;
+        this.logDebug('[PI] updateRunning', { phase, remaining, total });
         const svg = this.deps.display.generateDonutSVG(remaining, total, true, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
@@ -66,6 +71,7 @@ export class WorkflowController {
         } catch {}
       },
       showPaused: async (remaining: number, total: number, phase: Phase) => {
+        this.logDebug('[PI] showPaused', { phase, remaining, total });
         const svg = this.deps.display.generateDonutSVG(remaining, total, false, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
@@ -89,6 +95,7 @@ export class WorkflowController {
         this.lastRemaining = durationSec;
         this.lastTotal = fullTotal;
         this.lastPhase = phase;
+        this.logDebug('[TIMER] start', { phase, durationSec, fullTotal, endTime });
         try {
           action.setSettings({
             ...settings,
@@ -102,15 +109,18 @@ export class WorkflowController {
           this.actionId,
           durationSec,
           async (remaining) => {
+            this.logDebug('[TIMER] tick', { remaining });
             await (this.wf?.ctx ? this.createPorts(action, settings).updateRunning(remaining, fullTotal, phase) : Promise.resolve());
           },
           async () => {
+            this.logDebug('[TIMER] complete dispatch');
             try { onDone(); } catch {}
             try { await this.wf?.dispatch({ type: 'TIMER_DONE' }); } catch (e) { streamDeck.logger.debug('dispatch TIMER_DONE failed', e as any); }
           }
         );
       },
       stopTimer: () => {
+        this.logDebug('[TIMER] stop');
         this.deps.timer.stop(this.actionId);
       },
       playWorkEnd: async (path?: string) => { await AudioPlayer.play(path ?? "", 'timer-completion'); },
@@ -158,7 +168,8 @@ export class WorkflowController {
       ctx.pendingNext = phase;
     }
 
-    this.wf = new Workflow(ctx, this.createPorts(action, settings), initial);
+    this.logDebug('[WF] init', { initial, phase: ctx.phase, running: ctx.running, pausedRemaining: ctx.remaining });
+    this.wf = new Workflow(ctx, this.createPorts(action, settings), initial, undefined, { debug: (m, d) => this.logDebug(m, d) });
   }
 
   async appear(action: any, settings: WorkflowSettings): Promise<void> {
@@ -166,6 +177,7 @@ export class WorkflowController {
     const wasRunning = this.wf!.ctx.running;
     const hadEnd = typeof (settings as any).endTime === 'number';
     const expired = wasRunning && hadEnd && (settings as any).endTime <= Date.now();
+    this.logDebug('[WF] appear', { wasRunning, hadEnd, expired });
     await this.wf!.start();
     if (expired) {
       try { await this.wf!.dispatch({ type: 'TIMER_DONE' }); } catch (e) { streamDeck.logger.debug('appear TIMER_DONE dispatch failed', e as any); }
@@ -185,16 +197,20 @@ export class WorkflowController {
   computeRemaining(settings: any, phase: Phase): number {
     // Prefer cached remaining from live ticks
     if (typeof this.lastRemaining === 'number') {
+      this.logDebug('[WF] computeRemaining (cached)', { remaining: this.lastRemaining });
       return Math.max(0, this.lastRemaining);
     }
     const total = this.totalForPhase(phase, settings);
     if (typeof settings?.endTime === 'number' && settings.endTime > Date.now()) {
       const rem = Math.ceil((settings.endTime - Date.now()) / 1000);
+      this.logDebug('[WF] computeRemaining (endTime)', { remaining: rem });
       return Math.min(Math.max(rem, 0), total);
     }
     if (typeof settings?.remainingTime === 'number') {
+      this.logDebug('[WF] computeRemaining (settings.remainingTime)', { remaining: settings.remainingTime });
       return Math.min(Math.max(settings.remainingTime, 0), total);
     }
+    this.logDebug('[WF] computeRemaining (default total)', { total });
     return total;
   }
 
@@ -204,9 +220,13 @@ export class WorkflowController {
     this.wf!.ctx.settings = settings;
     // If currently running, snapshot remaining before dispatch so pausedInFlight can show it
     const runningStates = new Set(['workRunning','shortBreakRunning','longBreakRunning']);
-    if (runningStates.has((this.wf as any).current)) {
+    const wasRunning = runningStates.has((this.wf as any).current);
+    if (wasRunning) {
       const phase = this.wf!.ctx.phase;
       this.wf!.ctx.remaining = this.computeRemaining(settings as any, phase);
+      this.logDebug('[INPUT] shortPress (pause)', { phase, remaining: this.wf!.ctx.remaining });
+    } else {
+      this.logDebug('[INPUT] shortPress (resume/start)', { phase: this.wf!.ctx.phase });
     }
     await this.wf!.dispatch({ type: 'SHORT_PRESS' });
   }
@@ -214,11 +234,13 @@ export class WorkflowController {
   async longPress(action: any, settings: WorkflowSettings): Promise<void> {
     if (!this.wf) this.init(action, settings);
     this.wf!.ctx.settings = settings;
+    this.logDebug('[INPUT] longPress (reset)');
     await this.wf!.dispatch({ type: 'LONG_PRESS' });
   }
 
   settingsChanged(action: any, settings: WorkflowSettings): void {
     if (!this.wf) this.init(action, settings);
     this.wf!.ctx.settings = settings;
+    this.logDebug('[WF] settingsChanged', { pauseAtEnd: settings.pauseAtEndOfEachTimer, cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak });
   }
 }
