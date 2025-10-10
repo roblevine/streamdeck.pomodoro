@@ -77,26 +77,4 @@ export class PomodoroCycle {
 			};
 		}
 	}
-
-	/**
-	 * Get default cycle configuration
-	 */
-	static getDefaultConfig(): CycleConfig {
-		return {
-			workDuration: '25:00',
-			shortBreakDuration: '5:00',
-			longBreakDuration: '15:00',
-			cyclesBeforeLongBreak: 4
-		};
-	}
-
-	/**
-	 * Get default cycle state
-	 */
-	static getDefaultState(): CycleState {
-		return {
-			currentPhase: 'work',
-			currentCycleIndex: 0
-		};
-	}
 }

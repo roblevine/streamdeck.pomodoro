@@ -3,6 +3,7 @@ import streamDeck from "@elgato/streamdeck";
 import { TimerManager } from "../lib/timer-manager";
 import { DisplayGenerator } from "../lib/display-generator";
 import { PomodoroCycle, type Phase, type CycleConfig, type CycleState } from "../lib/pomodoro-cycle";
+import { DEFAULT_CONFIG } from "../lib/defaults";
 import { WorkflowController } from "../lib/workflow-controller";
 import { PluginMessageObserver } from "../lib/plugin-message-observer";
 import { handlePreviewSound } from "../lib/message-handlers/preview-sound-handler";
@@ -54,10 +55,10 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		// Ensure minimal defaults exist once
 		if (!settings.workDuration) {
 			const initConfig: CycleConfig = {
-				workDuration: '00:10',
-				shortBreakDuration: '00:02',
-				longBreakDuration: '00:05',
-				cyclesBeforeLongBreak: 4
+				workDuration: DEFAULT_CONFIG.workDuration,
+				shortBreakDuration: DEFAULT_CONFIG.shortBreakDuration,
+				longBreakDuration: DEFAULT_CONFIG.longBreakDuration,
+				cyclesBeforeLongBreak: DEFAULT_CONFIG.cyclesBeforeLongBreak
 			};
 			await ev.action.setSettings({
 				...settings,
@@ -66,7 +67,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 				currentPhase: 'work',
 				remainingTime: PomodoroCycle.getDurationForPhase('work', initConfig) * 60,
 				isRunning: false,
-				pauseAtEndOfEachTimer: settings.pauseAtEndOfEachTimer ?? true
+				pauseAtEndOfEachTimer: settings.pauseAtEndOfEachTimer ?? DEFAULT_CONFIG.pauseAtEndOfEachTimer
 			});
 		}
 
@@ -156,27 +157,27 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		const enableSound = (settings as any).enableSound === true || (settings as any).enableSound === 'true';
 		const pauseAtEnd = (settings as any).pauseAtEndOfEachTimer === false || (settings as any).pauseAtEndOfEachTimer === 'false'
 			? false
-			: true; // default true when unset or true/'true'
+			: (DEFAULT_CONFIG.pauseAtEndOfEachTimer ?? true); // use default when unset
 		// Normalize number field that may arrive as string
 		let cycles = (settings as any).cyclesBeforeLongBreak;
 		if (typeof cycles === 'string') {
 			const parsed = parseInt(cycles, 10);
-			cycles = Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
+			cycles = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_CONFIG.cyclesBeforeLongBreak;
 		} else if (typeof cycles !== 'number' || !Number.isFinite(cycles) || cycles <= 0) {
-			cycles = 4;
+			cycles = DEFAULT_CONFIG.cyclesBeforeLongBreak;
 		}
         // Completion hold seconds
-        let completionHoldSeconds = (settings as any).completionHoldSeconds;
-        if (typeof completionHoldSeconds === 'string') {
-            const parsed = parseFloat(completionHoldSeconds);
-            completionHoldSeconds = Number.isFinite(parsed) && parsed >= 0 ? parsed : 2;
-        } else if (typeof completionHoldSeconds !== 'number' || !Number.isFinite(completionHoldSeconds) || completionHoldSeconds < 0) {
-            completionHoldSeconds = 2;
-        }
+		let completionHoldSeconds = (settings as any).completionHoldSeconds;
+		if (typeof completionHoldSeconds === 'string') {
+			const parsed = parseFloat(completionHoldSeconds);
+			completionHoldSeconds = Number.isFinite(parsed) && parsed >= 0 ? parsed : (DEFAULT_CONFIG.completionHoldSeconds ?? 2);
+		} else if (typeof completionHoldSeconds !== 'number' || !Number.isFinite(completionHoldSeconds) || completionHoldSeconds < 0) {
+			completionHoldSeconds = DEFAULT_CONFIG.completionHoldSeconds ?? 2;
+		}
 		return {
-			workDuration: settings.workDuration ?? '00:10',
-			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
-			longBreakDuration: settings.longBreakDuration ?? '00:05',
+			workDuration: settings.workDuration ?? (DEFAULT_CONFIG.workDuration as any),
+			shortBreakDuration: settings.shortBreakDuration ?? (DEFAULT_CONFIG.shortBreakDuration as any),
+			longBreakDuration: settings.longBreakDuration ?? (DEFAULT_CONFIG.longBreakDuration as any),
 			cyclesBeforeLongBreak: cycles as number,
 			pauseAtEndOfEachTimer: pauseAtEnd,
 			enableSound,
