@@ -222,7 +222,7 @@ export class Workflow {
     private ports: Ports,
     initial: StateKey = 'idle',
     config: MachineConfig = createWorkflowConfig(),
-    logger?: { debug: (msg: string, data?: unknown) => void }
+    logger?: { debug: (msg: string, data?: unknown) => void; trace?: (msg: string, data?: unknown) => void }
   ) {
     this.config = config;
     this.state = initial;

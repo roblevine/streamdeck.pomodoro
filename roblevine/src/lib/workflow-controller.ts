@@ -177,7 +177,7 @@ export class WorkflowController {
       this.createPorts(action, settings),
       initial,
       undefined,
-      { debug: (m, d) => this.logDebug(m, d), trace: (m, d) => this.logTrace(m, d) }
+      { debug: (m: string, d?: unknown) => this.logDebug(m, d), trace: (m: string, d?: unknown) => this.logTrace(m, d) }
     );
   }
 
