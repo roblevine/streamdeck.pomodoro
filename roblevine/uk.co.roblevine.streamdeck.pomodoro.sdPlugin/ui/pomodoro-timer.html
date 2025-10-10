@@ -239,23 +239,23 @@
             </span>
         </sdpi-item>
         <sdpi-item label="Work Duration (mm:ss)">
-            <sdpi-textfield setting="workDuration" type="text" pattern="\d{1,3}:\d{2}" value="00:10" placeholder="00:10"></sdpi-textfield>
+            <sdpi-textfield setting="workDuration" type="text" pattern="\d{1,3}:\d{2}"></sdpi-textfield>
         </sdpi-item>
         <sdpi-item label="Short Break Duration (mm:ss)">
-            <sdpi-textfield setting="shortBreakDuration" type="text" pattern="\d{1,3}:\d{2}" value="00:02" placeholder="00:02"></sdpi-textfield>
+            <sdpi-textfield setting="shortBreakDuration" type="text" pattern="\d{1,3}:\d{2}"></sdpi-textfield>
         </sdpi-item>
         <sdpi-item label="Long Break Duration (mm:ss)">
-            <sdpi-textfield setting="longBreakDuration" type="text" pattern="\d{1,3}:\d{2}" value="00:05" placeholder="00:05"></sdpi-textfield>
+            <sdpi-textfield setting="longBreakDuration" type="text" pattern="\d{1,3}:\d{2}"></sdpi-textfield>
         </sdpi-item>
         <sdpi-item label="Cycles Before Long Break">
-            <sdpi-textfield setting="cyclesBeforeLongBreak" type="number" min="1" max="10" value="4" placeholder="4"></sdpi-textfield>
+            <sdpi-textfield setting="cyclesBeforeLongBreak" type="number" min="1" max="10"></sdpi-textfield>
         </sdpi-item>
         <sdpi-item label="Pause At End Of Each Phase">
-            <sdpi-checkbox setting="pauseAtEndOfEachTimer" value="true" checked></sdpi-checkbox>
+            <sdpi-checkbox setting="pauseAtEndOfEachTimer" value="true"></sdpi-checkbox>
             <br/>When enabled, the next phase will wait for a press before starting; when off, phases auto-advance.
         </sdpi-item>
         <sdpi-item label="Completion Hold (seconds)">
-            <sdpi-textfield setting="completionHoldSeconds" type="number" min="0" max="10" value="2" placeholder="2"></sdpi-textfield>
+            <sdpi-textfield setting="completionHoldSeconds" type="number" min="0" max="10"></sdpi-textfield>
             Time to pause at the end of a timer before proceeding to next step (or pausing further if "Pause At End Of Each Phase" is enabled)
         </sdpi-item>
     </div>

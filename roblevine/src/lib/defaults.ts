@@ -1,14 +1,13 @@
 import type { ConfigSettings } from "./workflow";
 
 export const DEFAULT_CONFIG: ConfigSettings = {
-  workDuration: '00:10',
-  shortBreakDuration: '00:02',
-  longBreakDuration: '00:05',
+  workDuration: '25:00',
+  shortBreakDuration: '05:00',
+  longBreakDuration: '10:00',
   cyclesBeforeLongBreak: 4,
   pauseAtEndOfEachTimer: true,
-  enableSound: undefined,
+  enableSound: false,
   workEndSoundPath: undefined,
   breakEndSoundPath: undefined,
-  completionHoldSeconds: 2
+  completionHoldSeconds: 3
 };
-

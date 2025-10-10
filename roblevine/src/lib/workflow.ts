@@ -1,6 +1,8 @@
 // Rough, dependency-free workflow state machine for Pomodoro.
 // Discussion/Scaffold: safe to import, not yet wired.
 
+import { DEFAULT_CONFIG } from "./defaults";
+
 export type Phase = 'work' | 'shortBreak' | 'longBreak';
 
 // Config settings persisted via Property Inspector
@@ -130,7 +132,7 @@ const stopTimer: ActionFn = async (ctx, ports) => { ctx.running = false; ports.s
 const runCompletionEffects = (kind: 'work' | 'break'): ActionFn => async (ctx, ports) => {
   const seconds = typeof (ctx.settings as any).completionHoldSeconds === 'number'
     ? (ctx.settings as any).completionHoldSeconds
-    : 2;
+    : DEFAULT_CONFIG.completionHoldSeconds;
   const ms = Math.max(0, Math.round(seconds * 1000));
   await ports.showCompletionWithSound(kind, ms);
 };

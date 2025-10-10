@@ -105,3 +105,56 @@ onKeyUp: () => {
   if (!longPressFired) dispatch('SHORT_PRESS');
 }
 ```
+Date: 2025-10-10
+
+Decisions
+- Increase default `completionHoldSeconds` to 3 seconds while keeping `pauseAtEndOfEachTimer` enabled by default.
+
+Rationale
+- Longer default hold gives a clearer completion acknowledgement before the next phase begins automatically.
+
+Rejected Alternatives
+- None.
+
+Pending Intents
+- Smoke test on hardware to confirm the longer hold still feels responsive.
+
+Heuristics
+- Keep PI default values in lockstep with runtime defaults to avoid confusing first-run behavior.
+
+Bootstrap Snippet
+```ts
+// Default config fragment
+export const DEFAULT_CONFIG = {
+  pauseAtEndOfEachTimer: true,
+  completionHoldSeconds: 3
+};
+```
+Date: 2025-10-10
+
+Decisions
+- Centralize default values in `DEFAULT_CONFIG`, relying on runtime to propagate them to UI/pipeline.
+
+Rationale
+- Avoids drift between runtime and property inspector defaults and keeps a single source of truth.
+
+Rejected Alternatives
+- Importing default literals into PI markup via build-time templating (overkill for current scale).
+
+Pending Intents
+- Observe PI load timing to ensure defaults arrive before user interaction on fresh installs.
+
+Heuristics
+- When a UI control needs a default, push it from plugin state rather than duplicating constants in markup.
+
+Bootstrap Snippet
+```ts
+if (!settings.workDuration) {
+  await action.setSettings({
+    ...DEFAULT_CONFIG,
+    ...settings,
+    currentPhase: 'work',
+    currentCycleIndex: 0
+  });
+}
+```

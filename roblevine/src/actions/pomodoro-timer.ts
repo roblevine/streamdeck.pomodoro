@@ -54,20 +54,22 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		const { settings } = ev.payload;
 		// Ensure minimal defaults exist once
 		if (!settings.workDuration) {
-			const initConfig: CycleConfig = {
-				workDuration: DEFAULT_CONFIG.workDuration,
-				shortBreakDuration: DEFAULT_CONFIG.shortBreakDuration,
-				longBreakDuration: DEFAULT_CONFIG.longBreakDuration,
-				cyclesBeforeLongBreak: DEFAULT_CONFIG.cyclesBeforeLongBreak
+			const mergedDefaults: PomodoroSettings = {
+				...DEFAULT_CONFIG,
+				...settings
+			};
+			const cycleDefaults: CycleConfig = {
+				workDuration: mergedDefaults.workDuration ?? DEFAULT_CONFIG.workDuration,
+				shortBreakDuration: mergedDefaults.shortBreakDuration ?? DEFAULT_CONFIG.shortBreakDuration,
+				longBreakDuration: mergedDefaults.longBreakDuration ?? DEFAULT_CONFIG.longBreakDuration,
+				cyclesBeforeLongBreak: mergedDefaults.cyclesBeforeLongBreak ?? DEFAULT_CONFIG.cyclesBeforeLongBreak
 			};
 			await ev.action.setSettings({
-				...settings,
-				...initConfig,
+				...mergedDefaults,
 				currentCycleIndex: 0,
 				currentPhase: 'work',
-				remainingTime: PomodoroCycle.getDurationForPhase('work', initConfig) * 60,
-				isRunning: false,
-				pauseAtEndOfEachTimer: settings.pauseAtEndOfEachTimer ?? DEFAULT_CONFIG.pauseAtEndOfEachTimer
+				remainingTime: PomodoroCycle.getDurationForPhase('work', cycleDefaults) * 60,
+				isRunning: false
 			});
 		}
 
@@ -155,9 +157,12 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	private extractWorkflowSettings(settings: PomodoroSettings) {
 		// Normalize toggles from PI which may arrive as string 'true'/'false'
 		const enableSound = (settings as any).enableSound === true || (settings as any).enableSound === 'true';
-		const pauseAtEnd = (settings as any).pauseAtEndOfEachTimer === false || (settings as any).pauseAtEndOfEachTimer === 'false'
-			? false
-			: (DEFAULT_CONFIG.pauseAtEndOfEachTimer ?? true); // use default when unset
+		const pauseSetting = (settings as any).pauseAtEndOfEachTimer;
+		const pauseAtEnd = pauseSetting === true || pauseSetting === 'true'
+			? true
+			: (pauseSetting === false || pauseSetting === 'false'
+				? false
+				: DEFAULT_CONFIG.pauseAtEndOfEachTimer);
 		// Normalize number field that may arrive as string
 		let cycles = (settings as any).cyclesBeforeLongBreak;
 		if (typeof cycles === 'string') {
@@ -166,13 +171,13 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		} else if (typeof cycles !== 'number' || !Number.isFinite(cycles) || cycles <= 0) {
 			cycles = DEFAULT_CONFIG.cyclesBeforeLongBreak;
 		}
-        // Completion hold seconds
+		// Completion hold seconds
 		let completionHoldSeconds = (settings as any).completionHoldSeconds;
 		if (typeof completionHoldSeconds === 'string') {
 			const parsed = parseFloat(completionHoldSeconds);
-			completionHoldSeconds = Number.isFinite(parsed) && parsed >= 0 ? parsed : (DEFAULT_CONFIG.completionHoldSeconds ?? 2);
+			completionHoldSeconds = Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_CONFIG.completionHoldSeconds;
 		} else if (typeof completionHoldSeconds !== 'number' || !Number.isFinite(completionHoldSeconds) || completionHoldSeconds < 0) {
-			completionHoldSeconds = DEFAULT_CONFIG.completionHoldSeconds ?? 2;
+			completionHoldSeconds = DEFAULT_CONFIG.completionHoldSeconds;
 		}
 		return {
 			workDuration: settings.workDuration ?? (DEFAULT_CONFIG.workDuration as any),
@@ -230,6 +235,7 @@ type PomodoroSettings = {
 	enableSound?: boolean;
 	workEndSoundPath?: string;
 	breakEndSoundPath?: string;
-    // Workflow policy
-    pauseAtEndOfEachTimer?: boolean;
+	// Workflow policy
+	pauseAtEndOfEachTimer?: boolean;
+	completionHoldSeconds?: number;
 };
