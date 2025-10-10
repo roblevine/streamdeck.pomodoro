@@ -3,7 +3,6 @@
  */
 export class TimerManager {
 	private timers: Map<string, NodeJS.Timeout> = new Map();
-	private endTimes: Map<string, number> = new Map();
 	private durations: Map<string, number> = new Map();
 
 	/**
@@ -18,7 +17,6 @@ export class TimerManager {
 		this.stop(actionId);
 
 		const endTime = Date.now() + durationSeconds * 1000;
-		this.endTimes.set(actionId, endTime);
 		this.durations.set(actionId, durationSeconds);
 
 		// Initial tick
@@ -42,27 +40,6 @@ export class TimerManager {
 	}
 
 	/**
-	 * Resume a timer from a saved end time
-	 */
-	resume(
-		actionId: string,
-		endTime: number,
-		durationSeconds: number,
-		onTick: (remainingSeconds: number) => Promise<void>,
-		onComplete: () => Promise<void>
-	): void {
-		const now = Date.now();
-		if (endTime <= now) {
-			// Already expired
-			onComplete();
-			return;
-		}
-
-		const remainingSeconds = Math.ceil((endTime - now) / 1000);
-		this.start(actionId, remainingSeconds, onTick, onComplete);
-	}
-
-	/**
 	 * Stop a timer
 	 */
 	stop(actionId: string): void {
@@ -71,7 +48,6 @@ export class TimerManager {
 			clearInterval(timerId);
 			this.timers.delete(actionId);
 		}
-		this.endTimes.delete(actionId);
 	}
 
 	/**
@@ -79,13 +55,6 @@ export class TimerManager {
 	 */
 	isRunning(actionId: string): boolean {
 		return this.timers.has(actionId);
-	}
-
-	/**
-	 * Get the stored duration for an action
-	 */
-	getDuration(actionId: string): number | undefined {
-		return this.durations.get(actionId);
 	}
 
 	/**

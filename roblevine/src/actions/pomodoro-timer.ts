@@ -4,7 +4,6 @@ import { TimerManager } from "../lib/timer-manager";
 import { DisplayGenerator } from "../lib/display-generator";
 import { PomodoroCycle, type Phase, type CycleConfig, type CycleState } from "../lib/pomodoro-cycle";
 import { WorkflowController } from "../lib/workflow-controller";
-import { AudioPlayer } from "../lib/audio-player";
 import { PluginMessageObserver } from "../lib/plugin-message-observer";
 import { handlePreviewSound } from "../lib/message-handlers/preview-sound-handler";
 import { handleStopSound } from "../lib/message-handlers/stop-sound-handler";

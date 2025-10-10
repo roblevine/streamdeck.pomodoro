@@ -59,18 +59,4 @@ export type PluginMessage =
 // Type Guards
 // ============================================================================
 
-export function isPreviewSoundMessage(msg: Message): msg is PreviewSoundMessage {
-	return msg.type === 'previewSound';
-}
-
-export function isStopSoundMessage(msg: Message): msg is StopSoundMessage {
-	return msg.type === 'stopSound';
-}
-
-export function isPlaybackStartedMessage(msg: Message): msg is PlaybackStartedMessage {
-	return msg.type === 'playbackStarted';
-}
-
-export function isPlaybackStoppedMessage(msg: Message): msg is PlaybackStoppedMessage {
-	return msg.type === 'playbackStopped';
-}
+// Type guards are unused in current plugin flow and have been removed to reduce surface area.

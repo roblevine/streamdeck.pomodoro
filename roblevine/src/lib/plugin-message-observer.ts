@@ -66,22 +66,6 @@ export class PluginMessageObserver {
 	}
 
 	/**
-	 * Get statistics about registered handlers
-	 */
-	getStats(): { messageTypes: string[]; totalHandlers: number } {
-		const stats = {
-			messageTypes: Array.from(this.handlers.keys()),
-			totalHandlers: 0
-		};
-
-		this.handlers.forEach((handlers) => {
-			stats.totalHandlers += handlers.length;
-		});
-
-		return stats;
-	}
-
-	/**
 	 * Debug logging using Stream Deck logger
 	 */
 	private log(message: string, data?: unknown): void {

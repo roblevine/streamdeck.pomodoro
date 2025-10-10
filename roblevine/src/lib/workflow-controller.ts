@@ -7,7 +7,6 @@ import { TimerManager } from "./timer-manager";
 import { DisplayGenerator } from "./display-generator";
 import { AudioPlayer } from "./audio-player";
 import { Ctx, Phase, Ports, Workflow, WorkflowSettings, durationForPhaseSec } from "./workflow";
-import { PomodoroCycle, type CycleConfig } from "./pomodoro-cycle";
 
 export interface ControllerDeps {
   timer: TimerManager;

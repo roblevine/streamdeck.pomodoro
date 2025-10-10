@@ -58,10 +58,5 @@ export class AudioPlayer {
 	/**
 	 * Check if audio is currently playing
 	 */
-	static isPlaying(playbackId?: string): boolean {
-		if (playbackId) {
-			return this.currentPlaybackId === playbackId;
-		}
-		return this.isCurrentlyPlaying;
-	}
+	// Note: isPlaying removed as unused in current plugin flow.
 }
