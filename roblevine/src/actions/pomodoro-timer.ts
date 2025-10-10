@@ -147,6 +147,11 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 			const currentPhase = settings.currentPhase ?? 'work';
 			await this.updateDisplay(ev.action, duration, false, duration, currentPhase);
 		}
+
+		// Inform workflow controller of settings change (non-breaking)
+		try {
+			this.getController(ev.action.id).settingsChanged(ev.action, this.extractWorkflowSettings(settings));
+		} catch {}
 	}
 
 	/**
