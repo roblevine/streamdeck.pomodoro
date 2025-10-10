@@ -163,108 +163,26 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		const startedAt = this.keyDownAt;
 		this.keyDownAt = null;
 		const elapsed = startedAt ? Date.now() - startedAt : 0;
+		const controller = this.getController(ev.action.id);
 		if (elapsed >= this.LONG_PRESS_MS) {
-			await this.handleLongPress(ev);
+			await controller.longPress(ev.action, this.extractWorkflowSettings(ev.payload.settings));
 		} else {
-			await this.handleShortPress(ev);
+			await controller.shortPress(ev.action, this.extractWorkflowSettings(ev.payload.settings));
 		}
 	}
 
-	private async handleShortPress(ev: KeyUpEvent<PomodoroSettings>): Promise<void> {
-		const { settings } = ev.payload;
-		const currentPhase = settings.currentPhase ?? 'work';
-		const config: CycleConfig = {
+
+	private extractWorkflowSettings(settings: PomodoroSettings) {
+		return {
 			workDuration: settings.workDuration ?? '00:10',
 			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
 			longBreakDuration: settings.longBreakDuration ?? '00:05',
-			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4
+			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4,
+			pauseAtEndOfEachTimer: settings.pauseAtEndOfEachTimer ?? true,
+			enableSound: settings.enableSound,
+			workEndSoundPath: settings.workEndSoundPath,
+			breakEndSoundPath: settings.breakEndSoundPath
 		};
-		const totalDuration = PomodoroCycle.getDurationForPhase(currentPhase, config) * 60;
-		const isRunning = settings.isRunning ?? false;
-
-		if (isRunning) {
-			// Pause: stop timer, persist remaining, show paused display
-			this.timerManager.stop(ev.action.id);
-			const remaining = this.computeRemaining(settings, totalDuration);
-			await ev.action.setSettings({
-				...settings,
-				isRunning: false,
-				endTime: undefined,
-				remainingTime: remaining
-			});
-			await this.updateDisplay(ev.action, remaining, false, totalDuration, currentPhase);
-			return;
-		}
-
-		// Not running: resume if paused mid-timer, otherwise start new timer
-		const remaining = typeof settings.remainingTime === 'number' ? settings.remainingTime : totalDuration;
-		const pausedMidTimer = remaining > 0 && remaining < totalDuration && !settings.endTime;
-		if (pausedMidTimer) {
-			await this.resumePausedTimer(ev.action.id, ev, remaining, totalDuration, currentPhase);
-		} else {
-			await this.startNewTimer(ev.action.id, ev);
-		}
-	}
-
-	private async handleLongPress(ev: KeyUpEvent<PomodoroSettings>): Promise<void> {
-		// Reset to idle: stop any timer, reset to work full-time, cycle index 0
-		this.timerManager.stop(ev.action.id);
-		const { settings } = ev.payload;
-		const config: CycleConfig = {
-			workDuration: settings.workDuration ?? '00:10',
-			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
-			longBreakDuration: settings.longBreakDuration ?? '00:05',
-			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4
-		};
-		const workDurationSec = PomodoroCycle.getDurationForPhase('work', config) * 60;
-		await ev.action.setSettings({
-			...settings,
-			isRunning: false,
-			endTime: undefined,
-			currentPhase: 'work',
-			currentCycleIndex: 0,
-			remainingTime: workDurationSec
-		});
-		await this.updateDisplay(ev.action, workDurationSec, false, workDurationSec, 'work');
-	}
-
-	private computeRemaining(settings: PomodoroSettings, total: number): number {
-		if (settings.endTime && settings.endTime > Date.now()) {
-			const rem = Math.ceil((settings.endTime - Date.now()) / 1000);
-			return Math.min(Math.max(rem, 0), total);
-		}
-		if (typeof settings.remainingTime === 'number') {
-			return Math.min(Math.max(settings.remainingTime, 0), total);
-		}
-		return total;
-	}
-
-	private async resumePausedTimer(
-		actionId: string,
-		ev: KeyUpEvent<PomodoroSettings>,
-		remaining: number,
-		totalDuration: number,
-		currentPhase: Phase
-	): Promise<void> {
-		const { settings } = ev.payload;
-		const endTime = Date.now() + remaining * 1000;
-		await ev.action.setSettings({
-			...settings,
-			isRunning: true,
-			remainingTime: remaining,
-			endTime
-		});
-
-		this.timerManager.setDuration(actionId, remaining);
-		this.timerManager.start(
-			actionId,
-			remaining,
-			async (rem) => {
-				await this.updateDisplay(ev.action, rem, true, totalDuration, currentPhase);
-				await ev.action.setSettings({ ...settings, remainingTime: rem });
-			},
-			() => this.completeTimer(actionId, ev as any)
-		);
 	}
 
 	/**
