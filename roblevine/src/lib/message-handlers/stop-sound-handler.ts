@@ -13,30 +13,24 @@ export function handleStopSound(
 ): void {
 	const { playbackId } = message.payload;
 
-	streamDeck.logger.debug(`[StopSoundHandler] Stopping: ${playbackId}`);
+    try {
+        // Stop the audio player
+        AudioPlayer.stop();
 
-	try {
-		// Stop the audio player
-		AudioPlayer.stop();
+        // Notify PI that playback stopped
+        const response: PlaybackStoppedMessage = {
+            type: 'playbackStopped',
+            payload: { playbackId }
+        };
+        messageObserver.sendToPropertyInspector(context, response);
+    } catch (error) {
+        streamDeck.logger.error(`[StopSoundHandler] Failed to stop sound:`, error);
 
-		streamDeck.logger.debug(`[StopSoundHandler] AudioPlayer.stop() called for: ${playbackId}`);
-
-		// Notify PI that playback stopped
-		const response: PlaybackStoppedMessage = {
-			type: 'playbackStopped',
-			payload: { playbackId }
-		};
-		messageObserver.sendToPropertyInspector(context, response);
-
-		streamDeck.logger.debug(`[StopSoundHandler] Sent playbackStopped for: ${playbackId}`);
-	} catch (error) {
-		streamDeck.logger.error(`[StopSoundHandler] Failed to stop sound:`, error);
-
-		// Still notify PI even if stop failed
-		const errorResponse: PlaybackStoppedMessage = {
-			type: 'playbackStopped',
-			payload: { playbackId }
-		};
-		messageObserver.sendToPropertyInspector(context, errorResponse);
-	}
+        // Still notify PI even if stop failed
+        const errorResponse: PlaybackStoppedMessage = {
+            type: 'playbackStopped',
+            payload: { playbackId }
+        };
+        messageObserver.sendToPropertyInspector(context, errorResponse);
+    }
 }

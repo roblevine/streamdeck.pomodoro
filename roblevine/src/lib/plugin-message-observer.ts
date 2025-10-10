@@ -13,11 +13,11 @@ export class PluginMessageObserver {
 	private handlers: Map<string, MessageHandler[]>;
 	private debugMode: boolean;
 
-	constructor(debugMode = true) {
-		this.handlers = new Map();
-		this.debugMode = debugMode;
-		this.log('PluginMessageObserver initialized');
-	}
+    constructor(debugMode = false) {
+        this.handlers = new Map();
+        this.debugMode = debugMode;
+        this.log('PluginMessageObserver initialized');
+    }
 
 	/**
 	 * Register a handler for a specific message type

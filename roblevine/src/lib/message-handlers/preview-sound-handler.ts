@@ -13,39 +13,31 @@ export async function handlePreviewSound(
 ): Promise<void> {
 	const { filePath, playbackId } = message.payload;
 
-	streamDeck.logger.debug(`[PreviewSoundHandler] Playing: ${playbackId}, file: ${filePath}`);
+    try {
+        // Notify PI that playback started
+        const startResponse: PlaybackStartedMessage = {
+            type: 'playbackStarted',
+            payload: { playbackId }
+        };
+        messageObserver.sendToPropertyInspector(context, startResponse);
 
-	try {
-		// Notify PI that playback started
-		const startResponse: PlaybackStartedMessage = {
-			type: 'playbackStarted',
-			payload: { playbackId }
-		};
-		messageObserver.sendToPropertyInspector(context, startResponse);
+        // Play the audio (this will block until complete)
+        await AudioPlayer.play(filePath, playbackId);
 
-		streamDeck.logger.debug(`[PreviewSoundHandler] Sent playbackStarted for: ${playbackId}`);
+        // Notify PI that playback stopped (completed naturally)
+        const stopResponse = {
+            type: 'playbackStopped',
+            payload: { playbackId }
+        };
+        messageObserver.sendToPropertyInspector(context, stopResponse);
+    } catch (error) {
+        streamDeck.logger.error(`[PreviewSoundHandler] Failed to play sound:`, error);
 
-		// Play the audio (this will block until complete)
-		await AudioPlayer.play(filePath, playbackId);
-
-		streamDeck.logger.debug(`[PreviewSoundHandler] Playback completed: ${playbackId}`);
-
-		// Notify PI that playback stopped (completed naturally)
-		const stopResponse = {
-			type: 'playbackStopped',
-			payload: { playbackId }
-		};
-		messageObserver.sendToPropertyInspector(context, stopResponse);
-
-		streamDeck.logger.debug(`[PreviewSoundHandler] Sent playbackStopped for: ${playbackId}`);
-	} catch (error) {
-		streamDeck.logger.error(`[PreviewSoundHandler] Failed to play sound:`, error);
-
-		// Notify PI that playback stopped due to error
-		const errorResponse = {
-			type: 'playbackStopped',
-			payload: { playbackId }
-		};
-		messageObserver.sendToPropertyInspector(context, errorResponse);
-	}
+        // Notify PI that playback stopped due to error
+        const errorResponse = {
+            type: 'playbackStopped',
+            payload: { playbackId }
+        };
+        messageObserver.sendToPropertyInspector(context, errorResponse);
+    }
 }

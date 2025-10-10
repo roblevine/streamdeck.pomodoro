@@ -1,4 +1,5 @@
 import * as player from "node-wav-player";
+import streamDeck from "@elgato/streamdeck";
 
 /**
  * Cross-platform audio player with stop functionality
@@ -33,14 +34,14 @@ export class AudioPlayer {
 				this.currentPlaybackId = null;
 				this.isCurrentlyPlaying = false;
 			}
-		} catch (error) {
-			// Silently fail if audio playback fails or was stopped
-			console.error('Failed to play sound:', error);
-			if (this.currentPlaybackId === playbackId) {
-				this.currentPlaybackId = null;
-				this.isCurrentlyPlaying = false;
-			}
-		}
+        } catch (error) {
+            // Silently fail if audio playback fails or was stopped
+            streamDeck.logger.error('Failed to play sound:', error);
+            if (this.currentPlaybackId === playbackId) {
+                this.currentPlaybackId = null;
+                this.isCurrentlyPlaying = false;
+            }
+        }
 	}
 
 	/**

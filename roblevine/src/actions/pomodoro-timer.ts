@@ -16,7 +16,7 @@ import type { PropertyInspectorMessage } from "../types/messages";
 export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	private timerManager = new TimerManager();
 	private displayGenerator = new DisplayGenerator();
-	private messageObserver = new PluginMessageObserver(true); // Debug mode ON
+	private messageObserver = new PluginMessageObserver(false);
 
 	constructor() {
 		super();
@@ -29,7 +29,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 			handleStopSound(ctx, msg as any, this.messageObserver)
 		);
 
-		streamDeck.logger.info('[PomodoroTimer] Message handlers registered');
+		// Message handlers registered
 	}
 
 	/**
@@ -101,7 +101,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	 * Handle settings changes from the property inspector
 	 */
 	override async onDidReceiveSettings(ev: any): Promise<void> {
-		streamDeck.logger.debug('[PomodoroTimer] onDidReceiveSettings triggered', JSON.stringify(ev.payload.settings));
+		// Settings received from property inspector
 
 		const { settings } = ev.payload;
 		const isRunning = settings.isRunning ?? false;
@@ -218,8 +218,9 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 			config
 		);
 
-		// Play sound if enabled
-		if (settings.enableSound) {
+		// Play sound if enabled (accept boolean or 'true' string)
+		const soundOn = settings.enableSound === true || (settings as any).enableSound === 'true';
+		if (soundOn) {
 			if (currentPhase === 'work' && settings.workEndSoundPath) {
 				await AudioPlayer.play(settings.workEndSoundPath, 'timer-completion');
 			} else if ((currentPhase === 'shortBreak' || currentPhase === 'longBreak') && settings.breakEndSoundPath) {

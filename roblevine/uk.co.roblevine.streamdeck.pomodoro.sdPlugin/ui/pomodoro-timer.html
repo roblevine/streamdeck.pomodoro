@@ -44,14 +44,150 @@
             // Subscribe to sendToPropertyInspector events
             streamDeckClient.sendToPropertyInspector.handlers.push((event) => {
                 const message = event.payload;
-
                 if (message.type === 'playbackStarted') {
                     updateButtonState(message.payload.playbackId, true);
                 } else if (message.type === 'playbackStopped') {
                     updateButtonState(message.payload.playbackId, false);
                 }
             });
+
+            // Set initial state for sound controls
+            streamDeckClient.getSettings().then(settings => {
+                const nested = settings?.settings ?? settings; // sdpi returns envelope with nested settings
+                // Only treat explicit true/'true' as enabled. Default to disabled.
+                const isEnabled = (nested.enableSound === true || nested.enableSound === 'true');
+                updateSoundControlsState(isEnabled);
+
+                // Also bind the checkbox inner input once settings are known
+                try { initializeEnableSoundCheckbox(nested); } catch (e) {}
+            });
+
+            // Listen for settings changes via didReceiveSettings event
+            streamDeckClient.didReceiveSettings.handlers.push((event) => {
+                console.log('[EnableSound] === SETTINGS CHANGED EVENT ===');
+                console.log('[EnableSound] Full event:', JSON.stringify(event, null, 2));
+                console.log('[EnableSound] Event keys:', Object.keys(event));
+                const settings = event.payload?.settings || event.settings || event;
+                console.log('[EnableSound] Parsed settings:', JSON.stringify(settings, null, 2));
+                console.log('[EnableSound] enableSound raw value:', settings.enableSound);
+                console.log('[EnableSound] enableSound type:', typeof settings.enableSound);
+                // Only treat explicit true/'true' as enabled. Default to disabled.
+                const isEnabled = (settings.enableSound === true || settings.enableSound === 'true');
+                console.log('[EnableSound] Evaluated isEnabled:', isEnabled);
+                updateSoundControlsState(isEnabled);
+            });
         };
+
+        // Monitor changes via sdpi-components event bus
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkbox = document.querySelector('sdpi-checkbox[setting="enableSound"]');
+
+            // sdpi-components emits a custom 'sdpi:change' event
+            document.addEventListener('sdpi:change', (e) => {
+                try {
+                    const detail = e.detail || {};
+                    const el = detail.control || detail.element || e.target;
+                    const settingName = el?.getAttribute?.('setting');
+                    if (settingName === 'enableSound') {
+                        const raw = detail.value;
+                        const checked = (raw === true || raw === 'true') || (!!el?.checked);
+                        updateSoundControlsState(checked);
+                        // Persist explicitly for reliability
+                        try {
+                            const { streamDeckClient } = window.SDPIComponents;
+                            streamDeckClient.setSettings({ enableSound: checked });
+                        } catch (err) {
+                            
+                        }
+                    }
+                } catch (err) {
+                    
+                }
+            });
+
+            // As a fallback, bind directly to the checkbox's shadow input
+            setTimeout(() => { try { initializeEnableSoundCheckbox(); } catch (_) {} }, 200);
+        });
+
+        // Bind to the sdpi-checkbox's internal input to detect user interaction
+        function initializeEnableSoundCheckbox(existingSettings) {
+            const el = document.querySelector('sdpi-checkbox[setting="enableSound"]');
+            if (!el) return;
+
+            const applyInitial = (input) => {
+                const raw = existingSettings?.enableSound;
+                const shouldCheck = raw === true || raw === 'true';
+                if (typeof shouldCheck === 'boolean') {
+                    input.checked = shouldCheck;
+                }
+            };
+
+            const bind = () => {
+                const input = el.shadowRoot && el.shadowRoot.querySelector && el.shadowRoot.querySelector('input[type="checkbox"]');
+                if (!input) {
+                    // Not yet rendered; try again shortly
+                    setTimeout(bind, 100);
+                    return;
+                }
+                if (input.__enableSoundBound) return; // prevent double-binding
+                input.__enableSoundBound = true;
+                applyInitial(input);
+                input.addEventListener('change', () => {
+                    const checked = !!input.checked;
+                    updateSoundControlsState(checked);
+                    try {
+                        const { streamDeckClient } = window.SDPIComponents;
+                        streamDeckClient.setSettings({ enableSound: checked });
+                    } catch (err) {
+                        
+                    }
+                });
+            };
+
+            bind();
+        }
+
+        // Update enabled/disabled state of sound controls
+        function updateSoundControlsState(enabled) {
+            console.log('[EnableSound] === UPDATE CONTROLS STATE ===');
+            console.log('[EnableSound] Setting controls to enabled:', enabled);
+
+            const workSoundFile = document.querySelector('#workSoundFile');
+            const breakSoundFile = document.querySelector('#breakSoundFile');
+            const workPreviewBtn = document.querySelector('#workPreviewBtn');
+            const breakPreviewBtn = document.querySelector('#breakPreviewBtn');
+
+            console.log('[EnableSound] Found elements:', {
+                workSoundFile: !!workSoundFile,
+                breakSoundFile: !!breakSoundFile,
+                workPreviewBtn: !!workPreviewBtn,
+                breakPreviewBtn: !!breakPreviewBtn
+            });
+
+            if (workSoundFile) {
+                workSoundFile.disabled = !enabled;
+                if (!enabled) workSoundFile.setAttribute('disabled', ''); else workSoundFile.removeAttribute('disabled');
+            }
+            if (breakSoundFile) {
+                breakSoundFile.disabled = !enabled;
+                if (!enabled) breakSoundFile.setAttribute('disabled', ''); else breakSoundFile.removeAttribute('disabled');
+            }
+            if (workPreviewBtn) {
+                workPreviewBtn.disabled = !enabled;
+                if (!enabled) workPreviewBtn.setAttribute('disabled', ''); else workPreviewBtn.removeAttribute('disabled');
+            }
+            if (breakPreviewBtn) {
+                breakPreviewBtn.disabled = !enabled;
+                if (!enabled) breakPreviewBtn.setAttribute('disabled', ''); else breakPreviewBtn.removeAttribute('disabled');
+            }
+
+            console.log('[EnableSound] Controls disabled states:', {
+                workSoundFile: workSoundFile?.disabled,
+                breakSoundFile: breakSoundFile?.disabled,
+                workPreviewBtn: workPreviewBtn?.disabled,
+                breakPreviewBtn: breakPreviewBtn?.disabled
+            });
+        }
 
         // Update button state based on playback
         function updateButtonState(playbackId, isPlaying) {
