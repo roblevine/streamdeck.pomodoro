@@ -24,6 +24,9 @@ export class WorkflowController {
   private logDebug(msg: string, data?: unknown) {
     try { streamDeck.logger.debug(msg, data as any); } catch { /* noop */ }
   }
+  private logTrace(msg: string, data?: unknown) {
+    try { streamDeck.logger.trace(msg, data as any); } catch { /* noop */ }
+  }
 
   constructor(actionId: string, deps?: Partial<ControllerDeps>) {
     this.actionId = actionId;
@@ -56,7 +59,7 @@ export class WorkflowController {
         this.lastRemaining = remaining;
         this.lastTotal = total;
         this.lastPhase = phase;
-        this.logDebug('[PI] updateRunning', { phase, remaining, total });
+        this.logTrace('[PI] updateRunning', { phase, remaining, total });
         const svg = this.deps.display.generateDonutSVG(remaining, total, true, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
@@ -71,7 +74,7 @@ export class WorkflowController {
         } catch {}
       },
       showPaused: async (remaining: number, total: number, phase: Phase) => {
-        this.logDebug('[PI] showPaused', { phase, remaining, total });
+        this.logTrace('[PI] showPaused', { phase, remaining, total });
         const svg = this.deps.display.generateDonutSVG(remaining, total, false, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
@@ -109,7 +112,7 @@ export class WorkflowController {
           this.actionId,
           durationSec,
           async (remaining) => {
-            this.logDebug('[TIMER] tick', { remaining });
+            this.logTrace('[TIMER] tick', { remaining });
             await (this.wf?.ctx ? this.createPorts(action, settings).updateRunning(remaining, fullTotal, phase) : Promise.resolve());
           },
           async () => {
@@ -169,7 +172,13 @@ export class WorkflowController {
     }
 
     this.logDebug('[WF] init', { initial, phase: ctx.phase, running: ctx.running, pausedRemaining: ctx.remaining });
-    this.wf = new Workflow(ctx, this.createPorts(action, settings), initial, undefined, { debug: (m, d) => this.logDebug(m, d) });
+    this.wf = new Workflow(
+      ctx,
+      this.createPorts(action, settings),
+      initial,
+      undefined,
+      { debug: (m, d) => this.logDebug(m, d), trace: (m, d) => this.logTrace(m, d) }
+    );
   }
 
   async appear(action: any, settings: WorkflowSettings): Promise<void> {
@@ -197,20 +206,20 @@ export class WorkflowController {
   computeRemaining(settings: any, phase: Phase): number {
     // Prefer cached remaining from live ticks
     if (typeof this.lastRemaining === 'number') {
-      this.logDebug('[WF] computeRemaining (cached)', { remaining: this.lastRemaining });
+      this.logTrace('[WF] computeRemaining (cached)', { remaining: this.lastRemaining });
       return Math.max(0, this.lastRemaining);
     }
     const total = this.totalForPhase(phase, settings);
     if (typeof settings?.endTime === 'number' && settings.endTime > Date.now()) {
       const rem = Math.ceil((settings.endTime - Date.now()) / 1000);
-      this.logDebug('[WF] computeRemaining (endTime)', { remaining: rem });
+      this.logTrace('[WF] computeRemaining (endTime)', { remaining: rem });
       return Math.min(Math.max(rem, 0), total);
     }
     if (typeof settings?.remainingTime === 'number') {
-      this.logDebug('[WF] computeRemaining (settings.remainingTime)', { remaining: settings.remainingTime });
+      this.logTrace('[WF] computeRemaining (settings.remainingTime)', { remaining: settings.remainingTime });
       return Math.min(Math.max(settings.remainingTime, 0), total);
     }
-    this.logDebug('[WF] computeRemaining (default total)', { total });
+    this.logTrace('[WF] computeRemaining (default total)', { total });
     return total;
   }
 

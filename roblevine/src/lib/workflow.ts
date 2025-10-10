@@ -216,7 +216,7 @@ export function createWorkflowConfig(): MachineConfig {
 export class Workflow {
   private config: MachineConfig;
   private state: StateKey;
-  private logger?: { debug: (msg: string, data?: unknown) => void };
+  private logger?: { debug: (msg: string, data?: unknown) => void; trace?: (msg: string, data?: unknown) => void };
   constructor(
     public ctx: Ctx,
     private ports: Ports,
@@ -261,7 +261,7 @@ export class Workflow {
 
   private async runOnEnter(s: StateKey): Promise<void> {
     const actions = this.config[s].onEnter ?? [];
-    this.logger?.debug('[WF] onEnter actions', { state: s, count: actions.length });
+    this.logger?.trace?.('[WF] onEnter actions', { state: s, count: actions.length });
     for (const a of actions) await a(this.ctx, this.ports);
   }
 
@@ -272,7 +272,7 @@ export class Workflow {
       let taken = false;
       for (const t of always) {
         if (!t.cond || t.cond(this.ctx)) {
-          this.logger?.debug('[WF] always transition', { from: this.state, to: t.target });
+          this.logger?.trace?.('[WF] always transition', { from: this.state, to: t.target });
           if (t.actions) for (const a of t.actions) await a(this.ctx, this.ports);
           await this.transitionTo(t.target);
           taken = true;

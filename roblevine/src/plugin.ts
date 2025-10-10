@@ -2,8 +2,8 @@ import streamDeck, { LogLevel } from "@elgato/streamdeck";
 
 import { PomodoroTimer } from "./actions/pomodoro-timer";
 
-// Set a reasonable default log level for ongoing use
-streamDeck.logger.setLevel(LogLevel.INFO);
+// Temporarily set very verbose logging for debugging
+streamDeck.logger.setLevel(LogLevel.TRACE);
 
 // Register the Pomodoro timer action.
 streamDeck.actions.registerAction(new PomodoroTimer());
