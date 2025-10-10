@@ -74,16 +74,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		// Initialize/workflow-driven appear (resume/expired/full display)
 		try {
 			const controller = this.getController(ev.action.id);
-			await controller.appear(ev.action, {
-				workDuration: settings.workDuration ?? '00:10',
-				shortBreakDuration: settings.shortBreakDuration ?? '00:02',
-				longBreakDuration: settings.longBreakDuration ?? '00:05',
-				cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4,
-				pauseAtEndOfEachTimer: settings.pauseAtEndOfEachTimer ?? true,
-				enableSound: settings.enableSound,
-				workEndSoundPath: settings.workEndSoundPath,
-				breakEndSoundPath: settings.breakEndSoundPath
-			});
+			await controller.appear(ev.action, this.extractWorkflowSettings(settings));
 		} catch (err) {
 			// Non-fatal: controller is additive for now
 			streamDeck.logger.debug('WorkflowController.appear failed (non-fatal)', err as any);
@@ -163,13 +154,26 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 
 
 	private extractWorkflowSettings(settings: PomodoroSettings) {
+		// Normalize toggles from PI which may arrive as string 'true'/'false'
+		const enableSound = (settings as any).enableSound === true || (settings as any).enableSound === 'true';
+		const pauseAtEnd = (settings as any).pauseAtEndOfEachTimer === false || (settings as any).pauseAtEndOfEachTimer === 'false'
+			? false
+			: true; // default true when unset or true/'true'
+		// Normalize number field that may arrive as string
+		let cycles = (settings as any).cyclesBeforeLongBreak;
+		if (typeof cycles === 'string') {
+			const parsed = parseInt(cycles, 10);
+			cycles = Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
+		} else if (typeof cycles !== 'number' || !Number.isFinite(cycles) || cycles <= 0) {
+			cycles = 4;
+		}
 		return {
 			workDuration: settings.workDuration ?? '00:10',
 			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
 			longBreakDuration: settings.longBreakDuration ?? '00:05',
-			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4,
-			pauseAtEndOfEachTimer: settings.pauseAtEndOfEachTimer ?? true,
-			enableSound: settings.enableSound,
+			cyclesBeforeLongBreak: cycles as number,
+			pauseAtEndOfEachTimer: pauseAtEnd,
+			enableSound,
 			workEndSoundPath: settings.workEndSoundPath,
 			breakEndSoundPath: settings.breakEndSoundPath
 		};
