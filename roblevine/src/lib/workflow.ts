@@ -12,6 +12,7 @@ export interface WorkflowSettings {
   enableSound?: boolean;
   workEndSoundPath?: string;
   breakEndSoundPath?: string;
+  completionHoldSeconds?: number;
 }
 
 export type EventType =
@@ -20,6 +21,7 @@ export type EventType =
   | 'SHORT_PRESS'
   | 'LONG_PRESS'
   | 'TIMER_DONE'
+  | 'COMPLETE_ANIM_DONE'
   | 'SETTINGS_CHANGED';
 
 export interface Event {
@@ -50,6 +52,8 @@ export interface Ports {
   // Audio
   playWorkEnd(path?: string): void | Promise<void>;
   playBreakEnd(path?: string): void | Promise<void>;
+  // Completion animation that shows a spinning dashed ring and 'Done'
+  showCompletion(durationMs: number): void | Promise<void>;
 }
 
 export type ActionFn = (ctx: Ctx, ports: Ports) => void | Promise<void>;
@@ -122,6 +126,13 @@ const playEndSound = (kind: 'work' | 'break'): ActionFn => async (ctx, ports) =>
   if (kind === 'work') await ports.playWorkEnd(ctx.settings.workEndSoundPath);
   else await ports.playBreakEnd(ctx.settings.breakEndSoundPath);
 };
+const runCompletionHold: ActionFn = async (ctx, ports) => {
+  const seconds = typeof (ctx.settings as any).completionHoldSeconds === 'number'
+    ? (ctx.settings as any).completionHoldSeconds
+    : 2;
+  const ms = Math.max(0, Math.round(seconds * 1000));
+  await ports.showCompletion(ms);
+};
 const setPendingNext = (phase: Phase): ActionFn => async (ctx) => { ctx.pendingNext = phase; };
 const incCycle: ActionFn = async (ctx) => { ctx.cycleIndex += 1; };
 const resetCycle: ActionFn = async (ctx) => { ctx.cycleIndex = 0; };
@@ -181,22 +192,28 @@ export function createWorkflowConfig(): MachineConfig {
     },
 
     workComplete: {
-      onEnter: [ stopTimer, playEndSound('work'), async (ctx) => { ctx.pendingNext = longBreakDue(ctx) ? 'longBreak' : 'shortBreak'; }, incCycle ],
-      always: [
-        { target: 'pausedNext', cond: pauseAtEnd },
-        { target: 'longBreakRunning', cond: (ctx) => ctx.pendingNext === 'longBreak' },
-        { target: 'shortBreakRunning' }
-      ]
+      onEnter: [ stopTimer, playEndSound('work'), async (ctx) => { ctx.pendingNext = longBreakDue(ctx) ? 'longBreak' : 'shortBreak'; }, incCycle, runCompletionHold ],
+      on: {
+        COMPLETE_ANIM_DONE: [
+          { target: 'pausedNext', cond: pauseAtEnd },
+          { target: 'longBreakRunning', cond: (ctx) => ctx.pendingNext === 'longBreak' },
+          { target: 'shortBreakRunning' }
+        ]
+      }
     },
 
     shortBreakComplete: {
-      onEnter: [ stopTimer, playEndSound('break'), setPendingNext('work') ],
-      always: [ { target: 'pausedNext', cond: pauseAtEnd }, { target: 'workRunning' } ]
+      onEnter: [ stopTimer, playEndSound('break'), setPendingNext('work'), runCompletionHold ],
+      on: {
+        COMPLETE_ANIM_DONE: [ { target: 'pausedNext', cond: pauseAtEnd }, { target: 'workRunning' } ]
+      }
     },
 
     longBreakComplete: {
-      onEnter: [ stopTimer, playEndSound('break'), resetCycle, setPendingNext('work') ],
-      always: [ { target: 'pausedNext', cond: pauseAtEnd }, { target: 'workRunning' } ]
+      onEnter: [ stopTimer, playEndSound('break'), resetCycle, setPendingNext('work'), runCompletionHold ],
+      on: {
+        COMPLETE_ANIM_DONE: [ { target: 'pausedNext', cond: pauseAtEnd }, { target: 'workRunning' } ]
+      }
     },
 
     pausedNext: {

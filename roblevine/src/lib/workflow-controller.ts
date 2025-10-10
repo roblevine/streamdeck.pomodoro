@@ -45,6 +45,29 @@ export class WorkflowController {
     await action.setTitle(this.deps.display.formatTime(remaining));
   }
 
+  private async runCompletionAnimation(action: any, durationMs: number) {
+    // Show 'Done' title, animate a spinning dashed white ring
+    const start = Date.now();
+    let angle = 0;
+    const stepMs = 100;
+    const tick = async () => {
+      angle = (angle + 20) % 360;
+      const svg = this.deps.display.generateDashedRingSVG(angle, '#FFFFFF');
+      const dataUrl = this.deps.display.svgToDataUrl(svg);
+      await action.setImage(dataUrl);
+      await action.setTitle('Done');
+    };
+    // First frame
+    await tick();
+    const interval = setInterval(async () => {
+      try { await tick(); } catch {}
+    }, stepMs);
+    setTimeout(async () => {
+      clearInterval(interval);
+      try { await this.wf?.dispatch({ type: 'COMPLETE_ANIM_DONE' }); } catch (e) { this.logDebug('[WF] COMPLETE_ANIM_DONE dispatch failed', e as any); }
+    }, Math.max(0, durationMs));
+  }
+
   constructor(actionId: string, deps?: Partial<ControllerDeps>) {
     this.actionId = actionId;
     this.deps = {
@@ -111,6 +134,10 @@ export class WorkflowController {
             endTime: undefined
           });
         } catch {}
+      },
+      showCompletion: async (durationMs: number) => {
+        this.stopPauseBlink();
+        await this.runCompletionAnimation(action, durationMs);
       },
       startTimer: (phase: Phase, durationSec: number, onDone: () => void) => {
         tickRef && (tickRef.total = durationSec);

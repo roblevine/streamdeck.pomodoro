@@ -165,6 +165,14 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		} else if (typeof cycles !== 'number' || !Number.isFinite(cycles) || cycles <= 0) {
 			cycles = 4;
 		}
+        // Completion hold seconds
+        let completionHoldSeconds = (settings as any).completionHoldSeconds;
+        if (typeof completionHoldSeconds === 'string') {
+            const parsed = parseFloat(completionHoldSeconds);
+            completionHoldSeconds = Number.isFinite(parsed) && parsed >= 0 ? parsed : 2;
+        } else if (typeof completionHoldSeconds !== 'number' || !Number.isFinite(completionHoldSeconds) || completionHoldSeconds < 0) {
+            completionHoldSeconds = 2;
+        }
 		return {
 			workDuration: settings.workDuration ?? '00:10',
 			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
@@ -173,7 +181,8 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 			pauseAtEndOfEachTimer: pauseAtEnd,
 			enableSound,
 			workEndSoundPath: settings.workEndSoundPath,
-			breakEndSoundPath: settings.breakEndSoundPath
+			breakEndSoundPath: settings.breakEndSoundPath,
+			completionHoldSeconds: completionHoldSeconds as number
 		};
 	}
 

@@ -45,6 +45,21 @@ export class DisplayGenerator {
 	}
 
 	/**
+	 * Generate a dashed (broken) ring SVG rotated by a given angle.
+	 */
+	generateDashedRingSVG(angleDeg: number, color: string = '#FFFFFF'): string {
+		const dashCircleR = this.radius;
+		const dashWidth = this.strokeWidth;
+		const dashPattern = `${Math.round(Math.PI * dashCircleR * 0.08)} ${Math.round(Math.PI * dashCircleR * 0.10)}`; // approx 8% dash 10% gap
+		return `<svg width="${this.size}" height="${this.size}" xmlns="http://www.w3.org/2000/svg">
+			<rect width="${this.size}" height="${this.size}" fill="#1a1a1a"/>
+			<g transform="rotate(${angleDeg}, ${this.center}, ${this.center})">
+				<circle cx="${this.center}" cy="${this.center}" r="${dashCircleR}" fill="none" stroke="${color}" stroke-width="${dashWidth}" stroke-linecap="round" stroke-dasharray="${dashPattern}"/>
+			</g>
+		</svg>`;
+	}
+
+	/**
 	 * Get color based on phase and state
 	 */
 	private getPhaseColor(
