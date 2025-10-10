@@ -1,6 +1,6 @@
 # Pomodoro Workflow State Machine
 
-Status: Planned
+Status: In Progress
 Date: 2025-10-10
 
 Decisions (Locked)
@@ -101,3 +101,15 @@ Acceptance Criteria
 - Long break every N work blocks; after long break, cycle resets; work auto-starts unless boundary pause.
 - State persists and resumes correctly; no regressions to display/audio.
 
+Progress
+- Scaffolded typed workflow engine (lib/workflow.ts).
+- Added WorkflowController with ports to TimerManager/Display/Audio (lib/workflow-controller.ts).
+- Routed SHORT_PRESS/LONG_PRESS through controller; TIMER_DONE dispatched from ports.
+- Action now classifies short vs long press and delegates to controller; controller initialized on appear.
+
+Remaining Checklist
+- Migrate onWillAppear resume/expiry handling fully into controller/workflow.
+- Route completion path entirely through workflow (remove legacy completeTimer path).
+- Honor pauseAtEndOfEachTimer at all boundaries (default true already encoded).
+- Add PI toggle for pauseAtEndOfEachTimer (default on) and persist.
+- Optional: add lightweight tests for key transitions (pause/resume, long break guard).
