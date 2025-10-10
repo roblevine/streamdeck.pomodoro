@@ -18,6 +18,9 @@ export class WorkflowController {
   private wf: Workflow | null = null;
   private deps: ControllerDeps;
   private actionId: string;
+  private lastRemaining?: number;
+  private lastTotal?: number;
+  private lastPhase?: Phase;
 
   constructor(actionId: string, deps?: Partial<ControllerDeps>) {
     this.actionId = actionId;
@@ -45,6 +48,10 @@ export class WorkflowController {
         } catch {}
       },
       updateRunning: async (remaining: number, total: number, phase: Phase) => {
+        // Cache last known values for accurate pause computation
+        this.lastRemaining = remaining;
+        this.lastTotal = total;
+        this.lastPhase = phase;
         const svg = this.deps.display.generateDonutSVG(remaining, total, true, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
@@ -78,6 +85,10 @@ export class WorkflowController {
         this.deps.timer.setDuration(this.actionId, durationSec);
         const fullTotal = durationForPhaseSec(phase, settings);
         const endTime = Date.now() + durationSec * 1000;
+        // Initialize cache for resume visualization
+        this.lastRemaining = durationSec;
+        this.lastTotal = fullTotal;
+        this.lastPhase = phase;
         try {
           action.setSettings({
             ...settings,
@@ -172,6 +183,10 @@ export class WorkflowController {
   }
 
   computeRemaining(settings: any, phase: Phase): number {
+    // Prefer cached remaining from live ticks
+    if (typeof this.lastRemaining === 'number') {
+      return Math.max(0, this.lastRemaining);
+    }
     const total = this.totalForPhase(phase, settings);
     if (typeof settings?.endTime === 'number' && settings.endTime > Date.now()) {
       const rem = Math.ceil((settings.endTime - Date.now()) / 1000);
