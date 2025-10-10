@@ -1,4 +1,4 @@
-import { action, KeyDownEvent, SendToPluginEvent, SingletonAction, WillAppearEvent, WillDisappearEvent } from "@elgato/streamdeck";
+import { action, KeyDownEvent, KeyUpEvent, SendToPluginEvent, SingletonAction, WillAppearEvent, WillDisappearEvent } from "@elgato/streamdeck";
 import streamDeck from "@elgato/streamdeck";
 import { TimerManager } from "../lib/timer-manager";
 import { DisplayGenerator } from "../lib/display-generator";
@@ -17,6 +17,8 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	private timerManager = new TimerManager();
 	private displayGenerator = new DisplayGenerator();
 	private messageObserver = new PluginMessageObserver(false);
+    private keyDownAt: number | null = null;
+    private readonly LONG_PRESS_MS = 700;
 
 	constructor() {
 		super();
@@ -118,19 +120,121 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	}
 
 	/**
-	 * Handle key press - start/stop timer
+	 * Record key down time for press classification.
 	 */
 	override async onKeyDown(ev: KeyDownEvent<PomodoroSettings>): Promise<void> {
+		this.keyDownAt = Date.now();
+	}
+
+	/**
+	 * Classify short vs long press and dispatch behavior.
+	 */
+	override async onKeyUp(ev: KeyUpEvent<PomodoroSettings>): Promise<void> {
+		const startedAt = this.keyDownAt;
+		this.keyDownAt = null;
+		const elapsed = startedAt ? Date.now() - startedAt : 0;
+		if (elapsed >= this.LONG_PRESS_MS) {
+			await this.handleLongPress(ev);
+		} else {
+			await this.handleShortPress(ev);
+		}
+	}
+
+	private async handleShortPress(ev: KeyUpEvent<PomodoroSettings>): Promise<void> {
 		const { settings } = ev.payload;
+		const currentPhase = settings.currentPhase ?? 'work';
+		const config: CycleConfig = {
+			workDuration: settings.workDuration ?? '00:10',
+			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
+			longBreakDuration: settings.longBreakDuration ?? '00:05',
+			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4
+		};
+		const totalDuration = PomodoroCycle.getDurationForPhase(currentPhase, config) * 60;
 		const isRunning = settings.isRunning ?? false;
 
 		if (isRunning) {
-			// Stop the timer
-			await this.stopTimer(ev.action.id, ev);
+			// Pause: stop timer, persist remaining, show paused display
+			this.timerManager.stop(ev.action.id);
+			const remaining = this.computeRemaining(settings, totalDuration);
+			await ev.action.setSettings({
+				...settings,
+				isRunning: false,
+				endTime: undefined,
+				remainingTime: remaining
+			});
+			await this.updateDisplay(ev.action, remaining, false, totalDuration, currentPhase);
+			return;
+		}
+
+		// Not running: resume if paused mid-timer, otherwise start new timer
+		const remaining = typeof settings.remainingTime === 'number' ? settings.remainingTime : totalDuration;
+		const pausedMidTimer = remaining > 0 && remaining < totalDuration && !settings.endTime;
+		if (pausedMidTimer) {
+			await this.resumePausedTimer(ev.action.id, ev, remaining, totalDuration, currentPhase);
 		} else {
-			// Start the timer (5 minutes)
 			await this.startNewTimer(ev.action.id, ev);
 		}
+	}
+
+	private async handleLongPress(ev: KeyUpEvent<PomodoroSettings>): Promise<void> {
+		// Reset to idle: stop any timer, reset to work full-time, cycle index 0
+		this.timerManager.stop(ev.action.id);
+		const { settings } = ev.payload;
+		const config: CycleConfig = {
+			workDuration: settings.workDuration ?? '00:10',
+			shortBreakDuration: settings.shortBreakDuration ?? '00:02',
+			longBreakDuration: settings.longBreakDuration ?? '00:05',
+			cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak ?? 4
+		};
+		const workDurationSec = PomodoroCycle.getDurationForPhase('work', config) * 60;
+		await ev.action.setSettings({
+			...settings,
+			isRunning: false,
+			endTime: undefined,
+			currentPhase: 'work',
+			currentCycleIndex: 0,
+			remainingTime: workDurationSec
+		});
+		await this.updateDisplay(ev.action, workDurationSec, false, workDurationSec, 'work');
+	}
+
+	private computeRemaining(settings: PomodoroSettings, total: number): number {
+		if (settings.endTime && settings.endTime > Date.now()) {
+			const rem = Math.ceil((settings.endTime - Date.now()) / 1000);
+			return Math.min(Math.max(rem, 0), total);
+		}
+		if (typeof settings.remainingTime === 'number') {
+			return Math.min(Math.max(settings.remainingTime, 0), total);
+		}
+		return total;
+	}
+
+	private async resumePausedTimer(
+		actionId: string,
+		ev: KeyUpEvent<PomodoroSettings>,
+		remaining: number,
+		totalDuration: number,
+		currentPhase: Phase
+	): Promise<void> {
+		const { settings } = ev.payload;
+		const endTime = Date.now() + remaining * 1000;
+		await ev.action.setSettings({
+			...settings,
+			isRunning: true,
+			remainingTime: remaining,
+			endTime
+		});
+
+		this.timerManager.setDuration(actionId, remaining);
+		this.timerManager.start(
+			actionId,
+			remaining,
+			async (rem) => {
+				await this.updateDisplay(ev.action, rem, true, totalDuration, currentPhase);
+				await ev.action.setSettings({ ...settings, remainingTime: rem });
+			},
+			() => this.completeTimer(actionId, ev as any)
+		);
 	}
 
 	/**
@@ -280,4 +384,6 @@ type PomodoroSettings = {
 	enableSound?: boolean;
 	workEndSoundPath?: string;
 	breakEndSoundPath?: string;
+    // Workflow policy
+    pauseAtEndOfEachTimer?: boolean;
 };
