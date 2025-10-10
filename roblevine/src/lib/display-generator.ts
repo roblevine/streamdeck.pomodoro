@@ -23,10 +23,11 @@ export class DisplayGenerator {
 		remainingSeconds: number,
 		totalSeconds: number,
 		isRunning: boolean,
-		phase: 'work' | 'shortBreak' | 'longBreak' = 'work'
+		phase: 'work' | 'shortBreak' | 'longBreak' = 'work',
+		colorOverride?: string
 	): string {
 		const percentage = remainingSeconds / totalSeconds;
-		const color = this.getPhaseColor(phase, isRunning, percentage);
+		const color = colorOverride ?? this.getPhaseColor(phase, isRunning, percentage);
 		const path = this.calculateArcPath(percentage);
 
 		return `<svg width="${this.size}" height="${this.size}" xmlns="http://www.w3.org/2000/svg">

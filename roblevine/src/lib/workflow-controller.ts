@@ -26,6 +26,24 @@ export class WorkflowController {
   private logTrace(msg: string, data?: unknown) {
     try { streamDeck.logger.trace(msg, data as any); } catch { /* noop */ }
   }
+  private pauseBlinkTimer: NodeJS.Timeout | null = null;
+  private pauseBlinkOn = false;
+
+  private stopPauseBlink() {
+    if (this.pauseBlinkTimer) {
+      clearInterval(this.pauseBlinkTimer);
+      this.pauseBlinkTimer = null;
+      this.pauseBlinkOn = false;
+    }
+  }
+
+  private async drawPausedFrame(action: any, remaining: number, total: number, phase: Phase) {
+    const color = this.pauseBlinkOn ? '#F44336' /* red */ : undefined; // undefined uses base phase color
+    const svg = this.deps.display.generateDonutSVG(remaining, total, false, phase, color);
+    const dataUrl = this.deps.display.svgToDataUrl(svg);
+    await action.setImage(dataUrl);
+    await action.setTitle(this.deps.display.formatTime(remaining));
+  }
 
   constructor(actionId: string, deps?: Partial<ControllerDeps>) {
     this.actionId = actionId;
@@ -39,6 +57,7 @@ export class WorkflowController {
     return {
       showFull: async (phase: Phase, total: number) => {
         this.logDebug('[PI] showFull', { phase, total });
+        this.stopPauseBlink();
         const svg = this.deps.display.generateDonutSVG(total, total, false, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
@@ -59,6 +78,7 @@ export class WorkflowController {
         this.lastTotal = total;
         this.lastPhase = phase;
         this.logTrace('[PI] updateRunning', { phase, remaining, total });
+        this.stopPauseBlink();
         const svg = this.deps.display.generateDonutSVG(remaining, total, true, phase);
         const dataUrl = this.deps.display.svgToDataUrl(svg);
         await action.setImage(dataUrl);
@@ -74,10 +94,14 @@ export class WorkflowController {
       },
       showPaused: async (remaining: number, total: number, phase: Phase) => {
         this.logTrace('[PI] showPaused', { phase, remaining, total });
-        const svg = this.deps.display.generateDonutSVG(remaining, total, false, phase);
-        const dataUrl = this.deps.display.svgToDataUrl(svg);
-        await action.setImage(dataUrl);
-        await action.setTitle(this.deps.display.formatTime(remaining));
+        this.stopPauseBlink();
+        // Draw first frame immediately, then blink between phase color and red
+        this.pauseBlinkOn = false;
+        await this.drawPausedFrame(action, remaining, total, phase);
+        this.pauseBlinkTimer = setInterval(async () => {
+          this.pauseBlinkOn = !this.pauseBlinkOn;
+          try { await this.drawPausedFrame(action, remaining, total, phase); } catch {}
+        }, 600);
         try {
           await action.setSettings({
             ...settings,
@@ -96,6 +120,7 @@ export class WorkflowController {
         this.lastRemaining = durationSec;
         this.lastTotal = fullTotal;
         this.lastPhase = phase;
+        this.stopPauseBlink();
         this.logDebug('[TIMER] start', { phase, durationSec, fullTotal, endTime });
         try {
           action.setSettings({
