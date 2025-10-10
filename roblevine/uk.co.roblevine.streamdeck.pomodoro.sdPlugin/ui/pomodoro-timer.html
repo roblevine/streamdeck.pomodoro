@@ -236,7 +236,11 @@
         <sdpi-button id="breakPreviewBtn" onclick="previewBreakSound()">Preview</sdpi-button>
     </sdpi-item>
     <sdpi-item label="Info">
-        <span>Configure your Pomodoro cycle. Enter durations in mm:ss format (e.g., 25:00 for 25 minutes). Default: 00:10 work, 00:02 short break, 00:05 long break after 4 cycles. Press the button to start or stop the timer.</span>
+        <span>
+            Configure your Pomodoro cycle. Enter durations in mm:ss format (e.g., 25:00 for 25 minutes).
+            Defaults: 00:10 work, 00:02 short break, 00:05 long break after 4 cycles.
+            Short press = pause/resume. Long press (&gt;2s) = reset to start. When "Pause At End Of Each Phase" is on, the next phase will wait for a press before starting; when off, phases auto-advance.
+        </span>
     </sdpi-item>
 
     <script>

@@ -98,8 +98,7 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		const isRunning = settings.isRunning ?? false;
 		const duration = settings.duration ?? 300;
 
-		// Update stored duration
-		this.timerManager.setDuration(ev.action.id, duration);
+		// Note: duration persistence removed; controller manages runtime only
 
 		// Only update display if timer is not running
 		if (!isRunning) {

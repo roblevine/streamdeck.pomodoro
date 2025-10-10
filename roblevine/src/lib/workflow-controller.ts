@@ -90,7 +90,6 @@ export class WorkflowController {
       },
       startTimer: (phase: Phase, durationSec: number, onDone: () => void) => {
         tickRef && (tickRef.total = durationSec);
-        this.deps.timer.setDuration(this.actionId, durationSec);
         const fullTotal = durationForPhaseSec(phase, settings);
         const endTime = Date.now() + durationSec * 1000;
         // Initialize cache for resume visualization
@@ -155,6 +154,8 @@ export class WorkflowController {
       // Resume running timer in current phase
       initial = phase === 'work' ? 'workRunning' : (phase === 'shortBreak' ? 'shortBreakRunning' : 'longBreakRunning');
       ctx.running = true;
+      // Resume correctness: use remaining derived from endTime
+      ctx.remaining = Math.ceil((endTime - now) / 1000);
     } else if (isRunning && endTime && endTime <= now) {
       // Expired while hidden: set to running and immediately handle completion after start
       initial = phase === 'work' ? 'workRunning' : (phase === 'shortBreak' ? 'shortBreakRunning' : 'longBreakRunning');

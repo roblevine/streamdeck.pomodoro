@@ -3,7 +3,6 @@
  */
 export class TimerManager {
 	private timers: Map<string, NodeJS.Timeout> = new Map();
-	private durations: Map<string, number> = new Map();
 
 	/**
 	 * Start a new timer for an action instance
@@ -17,7 +16,6 @@ export class TimerManager {
 		this.stop(actionId);
 
 		const endTime = Date.now() + durationSeconds * 1000;
-		this.durations.set(actionId, durationSeconds);
 
 		// Initial tick
 		const initialRemaining = Math.ceil((endTime - Date.now()) / 1000);
@@ -58,17 +56,9 @@ export class TimerManager {
 	}
 
 	/**
-	 * Set the stored duration for an action
-	 */
-	setDuration(actionId: string, durationSeconds: number): void {
-		this.durations.set(actionId, durationSeconds);
-	}
-
-	/**
 	 * Clean up all state for an action
 	 */
 	cleanup(actionId: string): void {
 		this.stop(actionId);
-		this.durations.delete(actionId);
 	}
 }
