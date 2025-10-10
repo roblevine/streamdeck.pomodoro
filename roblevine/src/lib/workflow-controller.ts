@@ -6,7 +6,7 @@ import streamDeck from "@elgato/streamdeck";
 import { TimerManager } from "./timer-manager";
 import { DisplayGenerator } from "./display-generator";
 import { AudioPlayer } from "./audio-player";
-import { Ctx, Phase, Ports, Workflow, WorkflowSettings, durationForPhaseSec } from "./workflow";
+import { Ctx, Phase, Ports, Workflow, ConfigSettings, durationForPhaseSec } from "./workflow";
 
 export interface ControllerDeps {
   timer: TimerManager;
@@ -20,7 +20,7 @@ export class WorkflowController {
   private lastRemaining?: number;
   private lastTotal?: number;
   private lastPhase?: Phase;
-  private currentSettings?: any;
+  private currentSettings?: ConfigSettings;
   private currentAction?: any;
   private hasStarted = false;
   private logDebug(msg: string, data?: unknown) {
@@ -79,7 +79,7 @@ export class WorkflowController {
     };
   }
 
-  createPorts(action: any, settings: WorkflowSettings, tickRef?: { total?: number }): Ports {
+  createPorts(action: any, settings: ConfigSettings, tickRef?: { total?: number }): Ports {
     this.currentAction = action;
     return {
       showFull: async (phase: Phase, total: number) => {
@@ -134,7 +134,7 @@ export class WorkflowController {
       },
       startTimer: (phase: Phase, durationSec: number, onDone: () => void) => {
         tickRef && (tickRef.total = durationSec);
-        const cfg = (this.currentSettings ?? settings) as WorkflowSettings;
+        const cfg = (this.currentSettings ?? settings) as ConfigSettings;
         const fullTotal = durationForPhaseSec(phase, cfg);
         const endTime = Date.now() + durationSec * 1000;
         // Initialize cache for resume visualization
@@ -167,7 +167,7 @@ export class WorkflowController {
     };
   }
 
-  init(action: any, settings: WorkflowSettings): void {
+  init(action: any, settings: ConfigSettings): void {
     // Start neutral (runtime not persisted across deletion), but allow in-session reuse later
     const ctx: Ctx = {
       phase: 'work',
@@ -190,7 +190,7 @@ export class WorkflowController {
     );
   }
 
-  async appear(action: any, settings: WorkflowSettings): Promise<void> {
+  async appear(action: any, settings: ConfigSettings): Promise<void> {
     if (!this.wf) {
       this.init(action, settings);
       this.currentSettings = settings;
@@ -224,7 +224,7 @@ export class WorkflowController {
     return remaining;
   }
 
-  totalForPhase(phase: Phase, settings: WorkflowSettings): number {
+  totalForPhase(phase: Phase, settings: ConfigSettings): number {
     return durationForPhaseSec(phase, settings);
   }
 
@@ -239,7 +239,7 @@ export class WorkflowController {
     return total;
   }
 
-  async shortPress(action: any, settings: WorkflowSettings): Promise<void> {
+  async shortPress(action: any, settings: ConfigSettings): Promise<void> {
     if (!this.wf) this.init(action, settings);
     // Ensure latest settings in context
     this.wf!.ctx.settings = settings;
@@ -257,7 +257,7 @@ export class WorkflowController {
     await this.wf!.dispatch({ type: 'SHORT_PRESS' });
   }
 
-  async longPress(action: any, settings: WorkflowSettings): Promise<void> {
+  async longPress(action: any, settings: ConfigSettings): Promise<void> {
     if (!this.wf) this.init(action, settings);
     this.wf!.ctx.settings = settings;
     this.currentSettings = settings;
@@ -265,7 +265,7 @@ export class WorkflowController {
     await this.wf!.dispatch({ type: 'LONG_PRESS' });
   }
 
-  settingsChanged(action: any, settings: WorkflowSettings): void {
+  settingsChanged(action: any, settings: ConfigSettings): void {
     if (!this.wf) this.init(action, settings);
     this.wf!.ctx.settings = settings;
     this.logDebug('[WF] settingsChanged', { pauseAtEnd: settings.pauseAtEndOfEachTimer, cyclesBeforeLongBreak: settings.cyclesBeforeLongBreak });

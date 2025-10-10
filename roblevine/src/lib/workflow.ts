@@ -3,7 +3,8 @@
 
 export type Phase = 'work' | 'shortBreak' | 'longBreak';
 
-export interface WorkflowSettings {
+// Config settings persisted via Property Inspector
+export interface ConfigSettings {
   workDuration: number | string;
   shortBreakDuration: number | string;
   longBreakDuration: number | string;
@@ -13,6 +14,18 @@ export interface WorkflowSettings {
   workEndSoundPath?: string;
   breakEndSoundPath?: string;
   completionHoldSeconds?: number;
+}
+
+// Backward-compat alias if other modules still import WorkflowSettings
+export type WorkflowSettings = ConfigSettings;
+
+// Runtime state for the workflow (in-memory only; not persisted)
+export interface RuntimeState {
+  phase: Phase;
+  cycleIndex: number;
+  running: boolean;
+  remaining?: number;
+  pendingNext?: Phase;
 }
 
 export type EventType =
@@ -29,13 +42,9 @@ export interface Event {
   payload?: unknown;
 }
 
-export interface Ctx {
-  phase: Phase;
-  cycleIndex: number; // completed work blocks in current set
-  running: boolean;
-  remaining?: number; // seconds (used for pausedInFlight)
-  pendingNext?: Phase; // used by pausedNext
-  settings: WorkflowSettings;
+export interface Ctx extends RuntimeState {
+  // Persisted config
+  settings: ConfigSettings;
 }
 
 // Ports implemented by controller
@@ -91,7 +100,7 @@ function parseDurationToSeconds(v: number | string): number {
   return Math.max(0, total);
 }
 
-export function durationForPhaseSec(phase: Phase, s: WorkflowSettings): number {
+export function durationForPhaseSec(phase: Phase, s: ConfigSettings): number {
   switch (phase) {
     case 'work': return parseDurationToSeconds(s.workDuration);
     case 'shortBreak': return parseDurationToSeconds(s.shortBreakDuration);
