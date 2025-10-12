@@ -130,6 +130,48 @@ export const DEFAULT_CONFIG = {
   completionHoldSeconds: 3
 };
 ```
+Date: 2025-10-12
+
+Decisions
+- Add double-press to skip the current (or pending) phase.
+- Double-press window: 320 ms target (300–350 ms acceptable).
+- When skipping: do not play completion animation or sound.
+- In pausedNext, double-press skips the pending phase to the following phase.
+- Always enabled (no setting).
+
+Rationale
+- Skipping phases quickly is a common need; double-press matches muscle memory and avoids adding UI clutter.
+- Avoiding completion effects keeps skips fast and unambiguous.
+- Consistent skip semantics from running, pausedInFlight, and pausedNext reduces cognitive load.
+
+Rejected Alternatives
+- Making the behavior configurable in settings (added complexity without clear demand yet).
+- Playing completion animation/sound during skips (adds delay and blurs the distinction between completion vs skip).
+
+Pending Intents
+- Validate double-press window on physical hardware; tune if necessary.
+- Consider a future PI toggle if users request turning off double-press.
+
+Heuristics
+- Keep short press semantics unchanged; reserve double-press exclusively for skip.
+- Respect pauseAtEndOfEachTimer across all skip transitions.
+
+Bootstrap Snippet
+```ts
+// Double-press detection (excerpt)
+const DOUBLE_TAP_MS = 320;
+let lastTapAt: number | null = null;
+let singlePressTimer: NodeJS.Timeout | null = null;
+
+if (lastTapAt && (Date.now() - lastTapAt) <= DOUBLE_TAP_MS) {
+  clearTimeout(singlePressTimer!);
+  lastTapAt = null;
+  controller.doublePress(action, settings);
+} else {
+  lastTapAt = Date.now();
+  singlePressTimer = setTimeout(() => controller.shortPress(action, settings), DOUBLE_TAP_MS + 20);
+}
+```
 Date: 2025-10-10
 
 Decisions

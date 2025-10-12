@@ -22,6 +22,9 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
     private readonly LONG_PRESS_MS = 2000;
     private longPressTimer: NodeJS.Timeout | null = null;
     private longPressFired: boolean = false;
+    private lastTapAt: number | null = null;
+    private singlePressTimer: NodeJS.Timeout | null = null;
+    private readonly DOUBLE_TAP_MS = 320;
     private controllers: Map<string, WorkflowController> = new Map();
 
     private getController(actionId: string): WorkflowController {
@@ -138,20 +141,42 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	/**
 	 * Classify short vs long press and dispatch behavior.
 	 */
-	override async onKeyUp(ev: KeyUpEvent<PomodoroSettings>): Promise<void> {
-		const startedAt = this.keyDownAt;
-		this.keyDownAt = null;
-		if (this.longPressTimer) { clearTimeout(this.longPressTimer); this.longPressTimer = null; }
-		if (this.longPressFired) { this.longPressFired = false; return; }
-		const elapsed = startedAt ? Date.now() - startedAt : 0;
-		try { streamDeck.logger.trace('[INPUT] keyUp', { elapsed }); } catch {}
-		const controller = this.getController(ev.action.id);
-		if (elapsed >= this.LONG_PRESS_MS) {
-			await controller.longPress(ev.action, this.extractWorkflowSettings(ev.payload.settings));
-		} else {
-			await controller.shortPress(ev.action, this.extractWorkflowSettings(ev.payload.settings));
-		}
-	}
+    override async onKeyUp(ev: KeyUpEvent<PomodoroSettings>): Promise<void> {
+        const startedAt = this.keyDownAt;
+        this.keyDownAt = null;
+        if (this.longPressTimer) { clearTimeout(this.longPressTimer); this.longPressTimer = null; }
+        if (this.longPressFired) { this.longPressFired = false; return; }
+        const now = Date.now();
+        const elapsed = startedAt ? now - startedAt : 0;
+        try { streamDeck.logger.trace('[INPUT] keyUp', { elapsed }); } catch {}
+        const controller = this.getController(ev.action.id);
+        if (elapsed >= this.LONG_PRESS_MS) {
+            await controller.longPress(ev.action, this.extractWorkflowSettings(ev.payload.settings));
+            return;
+        }
+
+        // Double-press detection window
+        const prev = this.lastTapAt;
+        const withinWindow = typeof prev === 'number' && (now - prev) <= this.DOUBLE_TAP_MS;
+        const settings = this.extractWorkflowSettings(ev.payload.settings);
+        if (withinWindow) {
+            // Second tap: fire DOUBLE and cancel pending single
+            this.lastTapAt = null;
+            if (this.singlePressTimer) { try { clearTimeout(this.singlePressTimer); } catch {} this.singlePressTimer = null; }
+            try { streamDeck.logger.trace('[INPUT] doublePress'); } catch {}
+            await controller.doublePress(ev.action, settings);
+        } else {
+            // First tap: queue single, allow brief time for a second tap
+            this.lastTapAt = now;
+            if (this.singlePressTimer) { try { clearTimeout(this.singlePressTimer); } catch {} this.singlePressTimer = null; }
+            this.singlePressTimer = setTimeout(async () => {
+                this.lastTapAt = null;
+                this.singlePressTimer = null;
+                try { streamDeck.logger.trace('[INPUT] shortPress (after double window)'); } catch {}
+                await controller.shortPress(ev.action, settings);
+            }, this.DOUBLE_TAP_MS + 20);
+        }
+    }
 
 
 	private extractWorkflowSettings(settings: PomodoroSettings) {

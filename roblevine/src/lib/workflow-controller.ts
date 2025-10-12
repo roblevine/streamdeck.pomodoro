@@ -281,6 +281,14 @@ export class WorkflowController {
     await this.wf!.dispatch({ type: 'LONG_PRESS' });
   }
 
+  async doublePress(action: any, settings: ConfigSettings): Promise<void> {
+    if (!this.wf) this.init(action, settings);
+    this.wf!.ctx.settings = settings;
+    this.currentSettings = settings;
+    this.logDebug('[INPUT] doublePress (skip phase)', { phase: this.wf!.ctx.phase, pendingNext: this.wf!.ctx.pendingNext });
+    await this.wf!.dispatch({ type: 'DOUBLE_PRESS' });
+  }
+
   settingsChanged(action: any, settings: ConfigSettings): void {
     if (!this.wf) this.init(action, settings);
     this.wf!.ctx.settings = settings;

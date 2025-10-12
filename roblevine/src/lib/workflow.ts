@@ -34,6 +34,7 @@ export type EventType =
   | 'APPEAR'
   | 'DISAPPEAR'
   | 'SHORT_PRESS'
+  | 'DOUBLE_PRESS'
   | 'LONG_PRESS'
   | 'TIMER_DONE'
   | 'COMPLETE_ANIM_DONE'
@@ -160,6 +161,15 @@ export function createWorkflowConfig(): MachineConfig {
       on: {
         TIMER_DONE: { target: 'workComplete' },
         SHORT_PRESS: { target: 'pausedInFlight', actions: [ stopTimer ] },
+        // Skip current work without completion effects
+        DOUBLE_PRESS: [
+          // Pause at end: compute next and show pausedNext
+          { target: 'pausedNext', cond: (ctx) => pauseAtEnd(ctx), actions: [ stopTimer, async (ctx) => { ctx.pendingNext = longBreakDue(ctx) ? 'longBreak' : 'shortBreak'; }, incCycle ] },
+          // Auto-advance to long break
+          { target: 'longBreakRunning', cond: (ctx) => longBreakDue(ctx), actions: [ stopTimer, incCycle ] },
+          // Auto-advance to short break
+          { target: 'shortBreakRunning', actions: [ stopTimer, incCycle ] }
+        ],
         LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle ] }
       }
     },
@@ -169,6 +179,11 @@ export function createWorkflowConfig(): MachineConfig {
       on: {
         TIMER_DONE: { target: 'shortBreakComplete' },
         SHORT_PRESS: { target: 'pausedInFlight', actions: [ stopTimer ] },
+        // Skip current short break without completion effects
+        DOUBLE_PRESS: [
+          { target: 'pausedNext', cond: (ctx) => pauseAtEnd(ctx), actions: [ stopTimer, setPendingNext('work') ] },
+          { target: 'workRunning', actions: [ stopTimer ] }
+        ],
         LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle ] }
       }
     },
@@ -178,6 +193,11 @@ export function createWorkflowConfig(): MachineConfig {
       on: {
         TIMER_DONE: { target: 'longBreakComplete' },
         SHORT_PRESS: { target: 'pausedInFlight', actions: [ stopTimer ] },
+        // Skip current long break without completion effects
+        DOUBLE_PRESS: [
+          { target: 'pausedNext', cond: (ctx) => pauseAtEnd(ctx), actions: [ stopTimer, resetCycle, setPendingNext('work') ] },
+          { target: 'workRunning', actions: [ stopTimer, resetCycle ] }
+        ],
         LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle ] }
       }
     },
@@ -189,6 +209,19 @@ export function createWorkflowConfig(): MachineConfig {
           { target: 'workRunning', cond: (ctx) => ctx.phase === 'work' },
           { target: 'shortBreakRunning', cond: (ctx) => ctx.phase === 'shortBreak' },
           { target: 'longBreakRunning' } // phase === 'longBreak'
+        ],
+        // Skip current phase while paused mid-timer
+        DOUBLE_PRESS: [
+          // Paused work: compute next break
+          { target: 'pausedNext', cond: (ctx) => ctx.phase === 'work' && pauseAtEnd(ctx), actions: [ async (ctx) => { ctx.pendingNext = longBreakDue(ctx) ? 'longBreak' : 'shortBreak'; }, incCycle ] },
+          { target: 'longBreakRunning', cond: (ctx) => ctx.phase === 'work' && longBreakDue(ctx), actions: [ incCycle ] },
+          { target: 'shortBreakRunning', cond: (ctx) => ctx.phase === 'work', actions: [ incCycle ] },
+          // Paused short break: go to work
+          { target: 'pausedNext', cond: (ctx) => ctx.phase === 'shortBreak' && pauseAtEnd(ctx), actions: [ setPendingNext('work') ] },
+          { target: 'workRunning', cond: (ctx) => ctx.phase === 'shortBreak' },
+          // Paused long break: go to work and reset cycle
+          { target: 'pausedNext', cond: (ctx) => ctx.phase === 'longBreak' && pauseAtEnd(ctx), actions: [ resetCycle, setPendingNext('work') ] },
+          { target: 'workRunning', cond: (ctx) => ctx.phase === 'longBreak', actions: [ resetCycle ] }
         ],
         LONG_PRESS: { target: 'idle', actions: [ resetCycle ] }
       }
@@ -226,6 +259,19 @@ export function createWorkflowConfig(): MachineConfig {
           { target: 'longBreakRunning', cond: (ctx) => ctx.pendingNext === 'longBreak' },
           { target: 'shortBreakRunning', cond: (ctx) => ctx.pendingNext === 'shortBreak' },
           { target: 'workRunning' }
+        ],
+        // Skip the pending phase and jump to the following one
+        DOUBLE_PRESS: [
+          // Pending work: skip to next break based on longBreakDue
+          { target: 'pausedNext', cond: (ctx) => (ctx.pendingNext ?? 'work') === 'work' && pauseAtEnd(ctx), actions: [ async (ctx) => { ctx.pendingNext = longBreakDue(ctx) ? 'longBreak' : 'shortBreak'; }, incCycle ] },
+          { target: 'longBreakRunning', cond: (ctx) => (ctx.pendingNext ?? 'work') === 'work' && longBreakDue(ctx), actions: [ incCycle ] },
+          { target: 'shortBreakRunning', cond: (ctx) => (ctx.pendingNext ?? 'work') === 'work', actions: [ incCycle ] },
+          // Pending short break: skip to work
+          { target: 'pausedNext', cond: (ctx) => ctx.pendingNext === 'shortBreak' && pauseAtEnd(ctx), actions: [ setPendingNext('work') ] },
+          { target: 'workRunning', cond: (ctx) => ctx.pendingNext === 'shortBreak' },
+          // Pending long break: skip to work and reset cycle
+          { target: 'pausedNext', cond: (ctx) => ctx.pendingNext === 'longBreak' && pauseAtEnd(ctx), actions: [ resetCycle, setPendingNext('work') ] },
+          { target: 'workRunning', cond: (ctx) => ctx.pendingNext === 'longBreak', actions: [ resetCycle ] }
         ],
         LONG_PRESS: { target: 'idle', actions: [ resetCycle ] }
       }

@@ -95,6 +95,7 @@ The Property Inspector uses raw WebSocket API to communicate with the plugin:
 - Configurable cycle parameters (durations, cycles before long break)
 - In-session resume across appear/disappear (page/profile switches)
 - Runtime state is not persisted across deletion; PI config is
+ - Input semantics: short press pauses/resumes; double‑press skips to the next phase (no completion animation/sound); long‑press (≥2s) resets
 
 ### Audio Notifications
 
@@ -126,6 +127,12 @@ The Property Inspector uses raw WebSocket API to communicate with the plugin:
 - onWillAppear (fresh): initialize controller/workflow with neutral state (pausedNext/work)
 - onWillAppear (existing): rebind action, re-render current state without restarting timers
 - onWillDisappear: no cleanup (to retain in-session state); long-press reset clears runtime
+
+### Inputs and Events
+
+- Short press → SHORT_PRESS
+- Double-press (≤ ~320 ms between taps) → DOUBLE_PRESS (skip)
+- Long press (≥ 2000 ms) → LONG_PRESS
 
 ## Platform Support
 
