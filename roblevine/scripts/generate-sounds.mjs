@@ -83,6 +83,15 @@ function generateKeyClick({
   return { sampleRate, channels: 1, bitsPerSample: 16, samples: data };
 }
 
+function generateSilent({
+  sampleRate = 44100,
+  durationMs = 12,
+} = {}) {
+  const total = Math.max(1, Math.round(sampleRate * (durationMs / 1000)));
+  const data = new Int16Array(total); // zeros = silence
+  return { sampleRate, channels: 1, bitsPerSample: 16, samples: data };
+}
+
 function toWavBytes({ sampleRate, channels, bitsPerSample, samples }) {
   const byteRate = (sampleRate * channels * bitsPerSample) / 8;
   const blockAlign = (channels * bitsPerSample) / 8;
@@ -141,7 +150,16 @@ function main() {
     fs.writeFileSync(clickPath, clickBytes);
     console.log(`Generated: ${clickPath} (${clickBytes.length} bytes)`);
   }
+
+  const primePath = path.join(outDir, 'silent-prime.wav');
+  if (fs.existsSync(primePath)) {
+    console.log(`Exists, skipping generation: ${primePath}`);
+  } else {
+    const silent = generateSilent();
+    const silentBytes = toWavBytes(silent);
+    fs.writeFileSync(primePath, silentBytes);
+    console.log(`Generated: ${primePath} (${silentBytes.length} bytes)`);
+  }
 }
 
 main();
-
