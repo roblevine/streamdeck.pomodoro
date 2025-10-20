@@ -61,6 +61,28 @@ function generateDoublePip({
   return { sampleRate, channels: 1, bitsPerSample: 16, samples: data };
 }
 
+function generateKeyClick({
+  sampleRate = 44100,
+  durationMs = 35,
+  f1 = 1800,
+  f2 = 3000,
+  amplitude = 0.35,
+} = {}) {
+  const total = Math.max(1, Math.round(sampleRate * (durationMs / 1000)));
+  const data = new Int16Array(total);
+  const twoPiF1 = (2 * Math.PI * f1) / sampleRate;
+  const twoPiF2 = (2 * Math.PI * f2) / sampleRate;
+  const amp = Math.max(0, Math.min(1, amplitude)) * 0.9;
+  for (let i = 0; i < total; i++) {
+    const t = i / total;
+    // Exponential decay envelope for clicky transient
+    const env = Math.exp(-12 * t);
+    const s = (Math.sin(i * twoPiF1) + 0.6 * Math.sin(i * twoPiF2)) * amp * env;
+    data[i] = Math.max(-1, Math.min(1, s)) * 0x7fff;
+  }
+  return { sampleRate, channels: 1, bitsPerSample: 16, samples: data };
+}
+
 function toWavBytes({ sampleRate, channels, bitsPerSample, samples }) {
   const byteRate = (sampleRate * channels * bitsPerSample) / 8;
   const blockAlign = (channels * bitsPerSample) / 8;
@@ -102,13 +124,24 @@ function main() {
   fs.mkdirSync(outDir, { recursive: true });
   if (fs.existsSync(outPath)) {
     console.log(`Exists, skipping generation: ${outPath}`);
-    return;
+  } else {
+    const wav = generateDoublePip();
+    const bytes = toWavBytes(wav);
+    fs.writeFileSync(outPath, bytes);
+    // eslint-disable-next-line no-console
+    console.log(`Generated: ${outPath} (${bytes.length} bytes)`);
   }
-  const wav = generateDoublePip();
-  const bytes = toWavBytes(wav);
-  fs.writeFileSync(outPath, bytes);
-  // eslint-disable-next-line no-console
-  console.log(`Generated: ${outPath} (${bytes.length} bytes)`);
+
+  // Generate key-click if missing
+  const clickPath = path.join(outDir, 'key-click.wav');
+  if (fs.existsSync(clickPath)) {
+    console.log(`Exists, skipping generation: ${clickPath}`);
+  } else {
+    const click = generateKeyClick();
+    const clickBytes = toWavBytes(click);
+    fs.writeFileSync(clickPath, clickBytes);
+    console.log(`Generated: ${clickPath} (${clickBytes.length} bytes)`);
+  }
 }
 
 // Execute unconditionally when invoked by Node

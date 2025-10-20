@@ -9,6 +9,9 @@ import { PluginMessageObserver } from "../lib/plugin-message-observer";
 import { handlePreviewSound } from "../lib/message-handlers/preview-sound-handler";
 import { handleStopSound } from "../lib/message-handlers/stop-sound-handler";
 import type { PropertyInspectorMessage } from "../types/messages";
+import { AudioPlayer } from "../lib/audio-player";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Pomodoro timer action - configurable countdown timer
@@ -128,6 +131,14 @@ export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 		this.longPressFired = false;
 		try { streamDeck.logger.trace('[INPUT] keyDown'); } catch {}
 		const settingsForPress = this.extractWorkflowSettings(ev.payload.settings);
+		// Key click on press (respects Enable Sound)
+		try {
+			if ((settingsForPress as any).enableSound) {
+				const baseDir = path.dirname(fileURLToPath(import.meta.url));
+				const clickPath = path.resolve(baseDir, '..', 'assets', 'sounds', 'key-click.wav');
+				void AudioPlayer.play(clickPath, 'key-click');
+			}
+		} catch {}
 		const actionRef = ev.action;
 		this.longPressTimer = setTimeout(async () => {
 			this.longPressFired = true;

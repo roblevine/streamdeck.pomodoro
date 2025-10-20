@@ -89,6 +89,9 @@ Update (2025-10-20)
 - Reset feedback added: ring flashes three times while a short double‑pip WAV plays (respects `enableSound`). A CC0 double‑pip asset is generated at build if missing.
 - Removed prior experimental backends (Audic/naudiodon) to keep implementation simple and dependency‑free.
 
+Update (2025-10-20, later)
+- Added a short key-click cue on every key press. The sound is a CC0, synthesized WAV (~35 ms) generated at build if missing (`key-click.wav`). It respects the global `enableSound` toggle and plays on key down using the same audio drivers.
+
 #### 2. Property Inspector WebSocket Connection
 
 The Property Inspector uses raw WebSocket API to communicate with the plugin:
