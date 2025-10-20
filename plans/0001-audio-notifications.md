@@ -70,11 +70,11 @@ Property Inspector settings for audio:
 
 #### 1. AudioPlayer (`src/lib/audio-player.ts`)
 
-Cross-platform audio playback utility using Node.js `child_process.exec`:
+Cross-platform audio playback via OS-specific drivers:
 
-- **macOS**: `afplay` command
-- **Windows**: PowerShell SoundPlayer
-- **Linux**: `aplay` (ALSA) or `paplay` (PulseAudio)
+- Windows: persistent PowerShell host with `System.Media.SoundPlayer` (keeps player resident; low latency)
+- macOS: `afplay` per play (fast)
+- Linux: `aplay` per play (basic fallback)
 
 **API:**
 ```typescript
@@ -82,6 +82,12 @@ AudioPlayer.play(filePath: string): Promise<void>
 ```
 
 Silently fails if audio playback is unavailable or file doesn't exist.
+
+Update (2025-10-20)
+- Finalized Windows driver as a persistent PowerShell subprocess that accepts commands on stdin (PLAY/STOP/EXIT) and keeps a `SoundPlayer` instance resident to avoid per‑play spawn latency.
+- macOS remains `afplay`; Linux uses `aplay` as a fallback. No external npm audio dependencies are required.
+- Reset feedback added: ring flashes three times while a short double‑pip WAV plays (respects `enableSound`). A CC0 double‑pip asset is generated at build if missing.
+- Removed prior experimental backends (Audic/naudiodon) to keep implementation simple and dependency‑free.
 
 #### 2. Property Inspector WebSocket Connection
 
