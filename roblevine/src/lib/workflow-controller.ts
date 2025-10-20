@@ -3,6 +3,8 @@
 // Initial scaffold to enable incremental wiring in the action.
 
 import streamDeck from "@elgato/streamdeck";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { TimerManager } from "./timer-manager";
 import { DisplayGenerator } from "./display-generator";
 import { AudioPlayer } from "./audio-player";
@@ -104,6 +106,39 @@ export class WorkflowController {
         await (this.currentAction ?? action).setImage(dataUrl);
         try { await (this.currentAction ?? action).setTitle(""); } catch {}
         // Do not persist runtime state to settings
+      },
+      showResetFeedback: async () => {
+        try { this.logDebug('[UI] resetFeedback start'); } catch {}
+        this.stopPauseBlink();
+        const cfg = (this.currentSettings ?? settings) as ConfigSettings;
+        const total = durationForPhaseSec('work', cfg);
+        const draw = (on: boolean) => {
+          try {
+            const act = (this.currentAction ?? action);
+            if (on) {
+              const svgOn = this.deps.display.generateDonutSVG(total, total, false, 'work', '#FFFFFF');
+              const dataUrlOn = this.deps.display.svgToDataUrl(svgOn);
+              // fire-and-forget to avoid blocking
+              void act.setImage(dataUrlOn);
+            } else {
+              const svgOff = this.deps.display.generateDonutSVG(0, total, false, 'work');
+              const dataUrlOff = this.deps.display.svgToDataUrl(svgOff);
+              void act.setImage(dataUrlOff);
+            }
+            try { void (this.currentAction ?? action).setTitle(""); } catch {}
+          } catch {}
+        };
+        // Start sound concurrently if enabled (fire-and-forget to ensure true concurrency)
+        const enableSound = (cfg as any).enableSound === true;
+        if (enableSound) {
+          try {
+            const baseDir = path.dirname(fileURLToPath(import.meta.url));
+            const soundPath = path.resolve(baseDir, '..', 'assets', 'sounds', 'reset-double-pip.wav');
+            // Start audio first; non-blocking
+            void AudioPlayer.play(soundPath, 'reset-feedback');
+          } catch (e) { this.logDebug('[AUDIO] reset sound error', e as any); }
+        }
+        return;
       },
       updateRunning: async (remaining: number, total: number, phase: Phase) => {
         // Cache last known values for accurate pause computation

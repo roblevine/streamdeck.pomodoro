@@ -63,6 +63,9 @@ export interface Ports {
 
   // Completion animation + sound (in parallel); must dispatch COMPLETE_ANIM_DONE when finished
   showCompletionWithSound(kind: 'work' | 'break', durationMs: number): void | Promise<void>;
+
+  // Reset feedback (ring flash + optional double pip sound)
+  showResetFeedback(): void | Promise<void>;
 }
 
 export type ActionFn = (ctx: Ctx, ports: Ports) => void | Promise<void>;
@@ -152,7 +155,7 @@ export function createWorkflowConfig(): MachineConfig {
       onEnter: [ setPhase('work'), showFullFor('work'), async (ctx) => { ctx.running = false; ctx.pendingNext = undefined; ctx.remaining = undefined; } ],
       on: {
         SHORT_PRESS: { target: 'workRunning' },
-        LONG_PRESS: { target: 'idle', actions: [ resetCycle ] }
+        LONG_PRESS: { target: 'idle', actions: [ resetCycle, async (_ctx, ports) => { await ports.showResetFeedback(); } ] }
       }
     },
 
@@ -170,7 +173,7 @@ export function createWorkflowConfig(): MachineConfig {
           // Auto-advance to short break
           { target: 'shortBreakRunning', actions: [ stopTimer, incCycle ] }
         ],
-        LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle ] }
+        LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle, async (_ctx, ports) => { await ports.showResetFeedback(); } ] }
       }
     },
 
@@ -184,7 +187,7 @@ export function createWorkflowConfig(): MachineConfig {
           { target: 'pausedNext', cond: (ctx) => pauseAtEnd(ctx), actions: [ stopTimer, setPendingNext('work') ] },
           { target: 'workRunning', actions: [ stopTimer ] }
         ],
-        LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle ] }
+        LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle, async (_ctx, ports) => { await ports.showResetFeedback(); } ] }
       }
     },
 
@@ -198,7 +201,7 @@ export function createWorkflowConfig(): MachineConfig {
           { target: 'pausedNext', cond: (ctx) => pauseAtEnd(ctx), actions: [ stopTimer, resetCycle, setPendingNext('work') ] },
           { target: 'workRunning', actions: [ stopTimer, resetCycle ] }
         ],
-        LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle ] }
+        LONG_PRESS: { target: 'idle', actions: [ stopTimer, resetCycle, async (_ctx, ports) => { await ports.showResetFeedback(); } ] }
       }
     },
 
@@ -223,7 +226,7 @@ export function createWorkflowConfig(): MachineConfig {
           { target: 'pausedNext', cond: (ctx) => ctx.phase === 'longBreak' && pauseAtEnd(ctx), actions: [ resetCycle, setPendingNext('work') ] },
           { target: 'workRunning', cond: (ctx) => ctx.phase === 'longBreak', actions: [ resetCycle ] }
         ],
-        LONG_PRESS: { target: 'idle', actions: [ resetCycle ] }
+        LONG_PRESS: { target: 'idle', actions: [ resetCycle, async (_ctx, ports) => { await ports.showResetFeedback(); } ] }
       }
     },
 
@@ -273,7 +276,7 @@ export function createWorkflowConfig(): MachineConfig {
           { target: 'pausedNext', cond: (ctx) => ctx.pendingNext === 'longBreak' && pauseAtEnd(ctx), actions: [ resetCycle, setPendingNext('work') ] },
           { target: 'workRunning', cond: (ctx) => ctx.pendingNext === 'longBreak', actions: [ resetCycle ] }
         ],
-        LONG_PRESS: { target: 'idle', actions: [ resetCycle ] }
+        LONG_PRESS: { target: 'idle', actions: [ resetCycle, async (_ctx, ports) => { await ports.showResetFeedback(); } ] }
       }
     }
   };

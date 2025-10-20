@@ -1,6 +1,7 @@
 {
     "scripts": {
-        "build": "rollup -c",
+        "build:assets": "node ./scripts/generate-reset-sound.mjs",
+        "build": "npm run build:assets && rollup -c",
         "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart uk.co.roblevine.streamdeck.pomodoro\""
     },
     "type": "module",
@@ -17,7 +18,6 @@
         "typescript": "^5.2.2"
     },
     "dependencies": {
-        "@elgato/streamdeck": "^1.0.0",
-        "node-wav-player": "^1.0.0"
+        "@elgato/streamdeck": "^1.0.0"
     }
 }

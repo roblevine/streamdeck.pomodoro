@@ -99,7 +99,9 @@ The Property Inspector uses raw WebSocket API to communicate with the plugin:
 
 ### Audio Notifications
 
-* Cross-platform audio playback using native system commands
+* Cross-platform playback with OS-specific drivers
+  - Windows: persistent PowerShell subprocess using System.Media.SoundPlayer (low-latency without per-play spawn)
+  - macOS: afplay per play (fast enough), same abstraction
 * Configurable WAV files for work completion and break completion
 * Preview buttons in Property Inspector for testing sounds
 * Enable/disable toggle for audio notifications
@@ -138,7 +140,7 @@ The Property Inspector uses raw WebSocket API to communicate with the plugin:
 
 * Plugin supports Windows 10+ and macOS 12+
 * Stream Deck software version 6.5+ required
-* Audio implementation uses platform-specific commands (afplay/PowerShell/aplay)
+* No external npm audio deps; Windows uses a resident PowerShell host, macOS uses `afplay`.
 
 ## Documentation
 

@@ -14,6 +14,7 @@ const sdPlugin = "uk.co.roblevine.streamdeck.pomodoro.sdPlugin";
  */
 const config = {
 	input: "src/plugin.ts",
+	external: [],
 	output: {
 		file: `${sdPlugin}/bin/plugin.js`,
 		sourcemap: isWatching,
@@ -36,7 +37,7 @@ const config = {
 			exportConditions: ["node"],
 			preferBuiltins: true
 		}),
-		commonjs(),
+		commonjs({ ignoreDynamicRequires: true }),
 		!isWatching && terser(),
 		{
 			name: "emit-module-package-file",

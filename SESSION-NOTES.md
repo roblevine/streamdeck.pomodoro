@@ -200,3 +200,54 @@ if (!settings.workDuration) {
   });
 }
 ```
+## 2025-10-19
+
+Decisions
+- Implement reset feedback on long-press: ring flashes 3x at ~120ms cadence; double-pip sound plays when `enableSound` is true.
+- Use a single bundled WAV `reset-double-pip.wav` (license must allow redistribution) placed under `uk.co.roblevine.streamdeck.pomodoro.sdPlugin/assets/sounds/`.
+
+Rationale
+- Clear tactile confirmation on destructive reset; aligns with existing audio/visual design.
+- Keeps complexity low by reusing current rendering/audio utilities.
+
+Pending Intents
+- Add/confirm a properly licensed `reset-double-pip.wav` asset.
+
+Heuristics
+- Prefer async port action so transition waits for feedback before entering `idle`.
+
+Bootstrap Snippet
+- If audio is not heard on reset: ensure `enableSound` is on and the WAV exists at `uk.co.roblevine.streamdeck.pomodoro.sdPlugin/assets/sounds/reset-double-pip.wav`.
+
+## 2025-10-19 (Later)
+
+Decisions
+- Audio latency on Windows (~500–1000 ms) persists across plays; cause is per‑play process startup (PowerShell/.NET SoundPlayer via node-wav-player).
+- Interim: proceed with reset feature; accept current latency while we evaluate a persistent audio subprocess driver for Windows.
+- For diagnostics, temporarily:
+  - Disabled reset ring flash to isolate audio timing.
+  - Played the double‑pip on every key press to confirm consistent latency.
+
+Rationale
+- Spawn-based playback adds fixed startup overhead each play on Windows; macOS `afplay` is generally fast.
+- Persistent subprocess (single long‑lived PowerShell host) should eliminate most of the per‑play delay without new npm deps.
+
+Rejected Alternatives
+- Pre‑warm single play on startup: ineffective because each subsequent play spawns again.
+- Switching to native addons now: adds build complexity; deferring until needed.
+
+Pending Intents
+- Implement `AudioDriver` abstraction with Windows persistent subprocess; keep macOS on `afplay` for now.
+- Re‑enable reset ring flash and add a small UI sync delay (e.g., 200–300 ms) only if needed after persistent driver.
+- Remove experimental keypress double‑pip once latency solution is in place.
+
+Heuristics
+- Keep audio non‑blocking; schedule UI updates via timers to avoid serializing event loop.
+- Add fallback to current player if driver init fails.
+
+Bootstrap Snippet
+```ts
+// Driver interface sketch
+interface AudioDriver { init(): Promise<void>; play(path: string): Promise<void>; stop(): void; dispose(): void; }
+// Windows driver: spawn persistent PowerShell host, read stdin lines (PLAY/STOP), call SoundPlayer.Load/Play.
+```

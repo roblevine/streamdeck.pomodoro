@@ -15,12 +15,14 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
 - Pause controls
   - Short press: pause/resume mid-timer (ring blinks phase/red while paused)
   - Long press (>2s): full reset to start
+  - On reset: ring flashes several times; a short double-pip plays (if sound enabled)
 - Completion feedback
   - Spinning dashed white ring with "Done" during a configurable hold
   - Sound and animation run concurrently; hold extends if sound is longer
 - Audio notifications (WAV)
   - Separate sounds for work completion and break completion
   - Preview buttons and enable/disable toggle
+  - Windows uses a persistent PowerShell host; macOS uses `afplay`
 - In-session resume when hidden/shown (page/profile switches); runtime is not persisted across deletion
 - Time display in MM:SS## Requirements
 
@@ -64,6 +66,7 @@ Click on the Pomodoro Timer button in Stream Deck to open the Property Inspector
 ### Behavior Summary
 
 - Short press pauses/resumes mid-timer; long press (>2s) resets timer and cycle count
+  - On reset, the ring flashes several times and a short double-pip sound plays when audio is enabled
 - Double‑press skips the current (or pending) phase and advances to the next; if the timer is running it is stopped first; no completion animation/sound is played for skips
 - If "Pause At End Of Each Phase" is on, next phase waits for a press; otherwise auto-starts
 - When a timer completes, "Done" shows with a spinning dashed ring; sound (if enabled) plays in parallel; the hold lasts at least the configured seconds, longer if the sound is still playing
