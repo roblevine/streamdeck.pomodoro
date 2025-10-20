@@ -137,8 +137,24 @@ export class WorkflowController {
             // Start audio first; non-blocking
             void AudioPlayer.play(soundPath, 'reset-feedback');
           } catch (e) { this.logDebug('[AUDIO] reset sound error', e as any); }
-        }
-        return;
+          }
+          // Flash ring while audio plays: 3 flashes at ~120ms cadence
+          const flashes = 3;
+          draw(true);
+          await new Promise<void>((resolve) => {
+            let toggles = 0;
+            let on = true;
+            const interval = setInterval(() => {
+              on = !on;
+              draw(on);
+              toggles++;
+              if (toggles >= flashes * 2 - 1) {
+                clearInterval(interval);
+                resolve();
+              }
+            }, 120);
+          });
+          try { this.logDebug('[UI] resetFeedback done'); } catch {}
       },
       updateRunning: async (remaining: number, total: number, phase: Phase) => {
         // Cache last known values for accurate pause computation

@@ -251,3 +251,28 @@ Bootstrap Snippet
 interface AudioDriver { init(): Promise<void>; play(path: string): Promise<void>; stop(): void; dispose(): void; }
 // Windows driver: spawn persistent PowerShell host, read stdin lines (PLAY/STOP), call SoundPlayer.Load/Play.
 ```
+
+## 2025-10-20
+
+Decisions
+- Finalize OS-specific audio drivers: Windows persistent PowerShell host; macOS afplay; Linux aplay fallback.
+- Remove experimental Audic/naudiodon paths and key-press diagnostic beeps.
+- Add driver disposal on plugin shutdown for clean teardown.
+
+Rationale
+- Provides low-latency audio on Windows without external deps; keeps macOS simple and fast.
+- Ensures clean lifecycle to avoid zombie processes.
+
+Heuristics
+- Keep audio non-blocking; never await playback before UI updates.
+- On shutdown, call `AudioPlayer.dispose()` via process signal/exit hooks.
+
+Bootstrap Snippet
+```ts
+// plugin.ts
+import { AudioPlayer } from './lib/audio-player';
+const disposeAudio = () => { try { AudioPlayer.dispose(); } catch {} };
+process.on('exit', disposeAudio);
+process.on('SIGINT', () => { disposeAudio(); process.exit(0); });
+process.on('SIGTERM', () => { disposeAudio(); process.exit(0); });
+```

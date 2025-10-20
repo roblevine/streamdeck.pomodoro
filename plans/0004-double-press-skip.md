@@ -1,6 +1,6 @@
 # Double-Press to Skip Phase
 
-Status: Planned
+Status: Implemented
 Date: 2025-10-12
 
 Decisions (Locked)
@@ -63,9 +63,8 @@ Manual Test Plan
 7. Single press still pause/resumes; long-press (≥2s) still resets.
 
 Implementation Checklist
-- [ ] Action: add double-tap detection and dispatch.
-- [ ] Workflow: add DOUBLE_PRESS event and transitions.
-- [ ] Controller: add doublePress method.
-- [ ] PI: doc text update.
-- [ ] Manual verification.
-
+- [x] Action: add double-tap detection and dispatch.
+- [x] Workflow: add DOUBLE_PRESS event and transitions.
+- [x] Controller: add doublePress method.
+- [x] PI: doc text update.
+- [x] Manual verification.

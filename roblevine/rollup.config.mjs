@@ -37,7 +37,7 @@ const config = {
 			exportConditions: ["node"],
 			preferBuiltins: true
 		}),
-		commonjs({ ignoreDynamicRequires: true }),
+		commonjs(),
 		!isWatching && terser(),
 		{
 			name: "emit-module-package-file",
