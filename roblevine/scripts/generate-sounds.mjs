@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Generates a CC0 double-pip WAV file at the plugin assets path.
+// Generates CC0 WAV assets at the plugin assets path.
 // No dependencies; plain Node ESM.
 
 import fs from 'node:fs';
@@ -120,19 +120,18 @@ function toWavBytes({ sampleRate, channels, bitsPerSample, samples }) {
 
 function main() {
   const outDir = path.resolve(__dirname, '..', 'uk.co.roblevine.streamdeck.pomodoro.sdPlugin', 'assets', 'sounds');
-  const outPath = path.join(outDir, 'reset-double-pip.wav');
   fs.mkdirSync(outDir, { recursive: true });
-  if (fs.existsSync(outPath)) {
-    console.log(`Exists, skipping generation: ${outPath}`);
+
+  const doublePipPath = path.join(outDir, 'reset-double-pip.wav');
+  if (fs.existsSync(doublePipPath)) {
+    console.log(`Exists, skipping generation: ${doublePipPath}`);
   } else {
     const wav = generateDoublePip();
     const bytes = toWavBytes(wav);
-    fs.writeFileSync(outPath, bytes);
-    // eslint-disable-next-line no-console
-    console.log(`Generated: ${outPath} (${bytes.length} bytes)`);
+    fs.writeFileSync(doublePipPath, bytes);
+    console.log(`Generated: ${doublePipPath} (${bytes.length} bytes)`);
   }
 
-  // Generate key-click if missing
   const clickPath = path.join(outDir, 'key-click.wav');
   if (fs.existsSync(clickPath)) {
     console.log(`Exists, skipping generation: ${clickPath}`);
@@ -144,5 +143,5 @@ function main() {
   }
 }
 
-// Execute unconditionally when invoked by Node
 main();
+

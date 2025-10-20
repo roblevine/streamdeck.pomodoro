@@ -1,6 +1,6 @@
 {
     "scripts": {
-        "build:assets": "node ./scripts/generate-reset-sound.mjs",
+        "build:assets": "node ./scripts/generate-sounds.mjs",
         "build": "npm run build:assets && rollup -c",
         "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart uk.co.roblevine.streamdeck.pomodoro\""
     },
