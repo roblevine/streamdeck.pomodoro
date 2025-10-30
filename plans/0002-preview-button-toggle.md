@@ -2,36 +2,31 @@
 
 **Status:** Complete
 **Date:** 2025-10-03
+**Fixed:** 2025-10-30
 **Related Commits:**
 - `b88b711` - feat: add play/stop toggle to preview buttons (partial)
 - `fc94792` - feat: add preview buttons for sound file selectors
+- `010c196` - fix: preview stop button and audio playback completion
 
 ## Overview
 
-Preview buttons in the Property Inspector now toggle between "Preview" and "Stop" states. When audio is playing, clicking the button should stop playback immediately. The UI toggle works correctly, but the stop functionality is not working.
+Preview buttons in the Property Inspector toggle between "Preview" and "Stop" states. When audio is playing, clicking the button stops playback immediately. Both the UI toggle and audio stop functionality are working correctly.
 
 ## Functionality
 
 ### Working Features
 
-1. **Preview → Stop Toggle (UI)**
+1. **Preview → Stop Toggle (UI & Functionality)**
    - Button text changes from "Preview" to "Stop" when clicked
    - Uses optimistic UI updates for instant feedback
-   - Auto-resets to "Preview" after 5 seconds
+   - Stop button immediately stops audio playback
+   - Button resets to "Preview" when playback completes or is stopped
 
 2. **Audio Playback**
    - Clicking "Preview" plays the selected sound file
    - Audio plays correctly through AudioPlayer
    - Only one preview can play at a time (new playback stops previous)
-
-### Known Bug
-
-**Stop button doesn't actually stop audio playback**
-
-- Clicking "Stop" changes button text back to "Preview" (UI works)
-- Audio continues playing until completion
-- `stopSound` action may not be reaching the plugin, OR
-- `AudioPlayer.stop()` is being called but not killing the process
+   - macOS driver now waits for process completion (prevents button flicker)
 
 ## Implementation
 
@@ -281,11 +276,11 @@ static stop(): void {
    - Click "Preview" → Button changes to "Stop" ✓
    - Wait for audio to finish → Button resets to "Preview" ✓
 
-2. **Stop During Playback** (BROKEN)
+2. **Stop During Playback** ✓ FIXED
    - Click "Preview" to start audio
    - Click "Stop" while audio playing
    - Expected: Audio stops immediately
-   - Actual: Button resets but audio continues
+   - Actual: Audio stops immediately ✓
 
 3. **Multiple Previews**
    - Click "Preview" on work sound
@@ -300,23 +295,31 @@ static stop(): void {
    - Expected: Button resets to "Preview"
    - Actual: Works correctly ✓
 
+## Fix Summary (2025-10-30)
+
+The stop button bug was fixed with the following changes:
+
+1. **macOS Audio Driver** - Made `play()` wait for process completion using Promise with exit event listener, preventing premature `playbackStopped` messages
+2. **Process Termination** - Improved `stop()` with SIGTERM first, then SIGKILL fallback, with proper PID validation
+3. **PlaybackId Validation** - Added playbackId parameter to `AudioPlayer.stop()` to ensure only matching playback is stopped
+4. **Message Handling** - Verified message flow with debug logging (disabled by default)
+
+The fix ensures that:
+- macOS `afplay` processes are properly tracked and can be killed
+- Button state updates correctly as playback starts/stops
+- No flickering between "Stop" and "Preview" states
+
 ## Future Enhancements
 
-Once stop functionality is working:
-
-1. **Remove Timeout**
-   - Rely on `playbackStopped` messages from plugin
-   - Only use timeout as fallback
-
-2. **Visual Feedback**
+1. **Visual Feedback**
    - Progress bar or animation while playing
    - Spinner or loading indicator
 
-3. **Error Handling**
+2. **Error Handling**
    - Show error if file not found
    - Show error if audio format not supported
 
-4. **Keyboard Support**
+3. **Keyboard Support**
    - Spacebar to stop playback
    - ESC key to stop
 

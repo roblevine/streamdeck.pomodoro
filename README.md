@@ -21,7 +21,8 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
   - Sound and animation run concurrently; hold extends if sound is longer
 - Audio notifications (WAV)
   - Separate sounds for work completion and break completion
-  - Preview buttons and enable/disable toggle
+  - Preview buttons with play/stop toggle for testing sounds
+  - Enable/disable toggle for all audio notifications
   - Windows uses a persistent PowerShell host; macOS uses `afplay`
   - Key click on every press (respects Enable Sound)
 - In-session resume when hidden/shown (page/profile switches); runtime is not persisted across deletion
