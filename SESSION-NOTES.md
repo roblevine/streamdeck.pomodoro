@@ -276,3 +276,58 @@ process.on('exit', disposeAudio);
 process.on('SIGINT', () => { disposeAudio(); process.exit(0); });
 process.on('SIGTERM', () => { disposeAudio(); process.exit(0); });
 ```
+
+## 2025-10-30
+
+Decisions
+- Fix preview stop button: macOS audio driver must wait for process completion (Promise with exit event listener).
+- Add playbackId validation to AudioPlayer.stop() to prevent stopping wrong playback.
+- Improve macOS driver stop() with SIGTERM first, then SIGKILL fallback after 100ms if process still alive.
+- Add debug logging infrastructure but disable by default (LogLevel.INFO, PluginMessageObserver(false)).
+- Keep useful console.log in Property Inspector for debugging (message bus, preview actions) but remove verbose internal state logging.
+- Keep console.warn for actual errors in Property Inspector (missing elements, unknown playbackId, missing files).
+
+Rationale
+- macOS afplay spawns asynchronously; play() was returning immediately, causing playbackStopped message to fire right after playbackStarted, making button flicker between "Stop" and "Preview".
+- Making play() wait for process completion ensures button state stays synchronized with actual playback.
+- PlaybackId validation prevents race conditions where stop() might kill the wrong playback.
+- SIGTERM then SIGKILL ensures graceful termination when possible, forceful when needed.
+- Debug logging disabled by default keeps logs clean but can be enabled for troubleshooting.
+- Property Inspector console logs are useful for browser-based debugging but shouldn't be excessive.
+
+Rejected Alternatives
+- Keeping macOS play() returning immediately and trying to fix button flicker in UI (doesn't solve root cause).
+- Removing all console.log from Property Inspector (useful for debugging communication issues).
+- Using only SIGKILL (less graceful, may cause issues with some processes).
+
+Pending Intents
+- None (stop button fix is complete).
+
+Heuristics
+- Property Inspector runs in browser context - console.log/warn useful for debugging, but streamDeck.logger not available.
+- Audio drivers should wait for process completion to ensure accurate state tracking.
+- Always validate playbackId when stopping to prevent stopping wrong playback.
+- Debug logging should be opt-in, not default.
+
+Bootstrap Snippet
+```ts
+// macOS driver play() - wait for completion
+async play(filePath: string): Promise<void> {
+  this.stop();
+  this.child = spawn('afplay', [filePath], { stdio: 'ignore' });
+  const childRef = this.child;
+  return new Promise<void>((resolve) => {
+    childRef.on('exit', () => {
+      if (this.child === childRef) this.child = null;
+      resolve();
+    });
+  });
+}
+
+// AudioPlayer.stop() with playbackId validation
+static stop(playbackId?: string): void {
+  if (playbackId && this.currentPlaybackId !== playbackId) return;
+  this.driver?.stop();
+  this.currentPlaybackId = null;
+}
+```
