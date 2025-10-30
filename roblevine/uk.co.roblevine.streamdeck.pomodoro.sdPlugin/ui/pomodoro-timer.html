@@ -57,11 +57,21 @@
 
             // Subscribe to sendToPropertyInspector events
             streamDeckClient.sendToPropertyInspector.handlers.push((event) => {
-                const message = event.payload;
+                // Handle both direct event structure and wrapped payload structure
+                const message = event.type ? event : (event.payload || event);
+                
                 if (message.type === 'playbackStarted') {
-                    updateButtonState(message.payload.playbackId, true);
+                    const playbackId = message.payload?.playbackId || message.playbackId;
+                    console.log('[PI MessageBus] Playback started:', playbackId);
+                    if (playbackId) {
+                        updateButtonState(playbackId, true);
+                    }
                 } else if (message.type === 'playbackStopped') {
-                    updateButtonState(message.payload.playbackId, false);
+                    const playbackId = message.payload?.playbackId || message.playbackId;
+                    console.log('[PI MessageBus] Playback stopped:', playbackId);
+                    if (playbackId) {
+                        updateButtonState(playbackId, false);
+                    }
                 }
             });
 
@@ -78,16 +88,9 @@
 
             // Listen for settings changes via didReceiveSettings event
             streamDeckClient.didReceiveSettings.handlers.push((event) => {
-                console.log('[EnableSound] === SETTINGS CHANGED EVENT ===');
-                console.log('[EnableSound] Full event:', JSON.stringify(event, null, 2));
-                console.log('[EnableSound] Event keys:', Object.keys(event));
                 const settings = event.payload?.settings || event.settings || event;
-                console.log('[EnableSound] Parsed settings:', JSON.stringify(settings, null, 2));
-                console.log('[EnableSound] enableSound raw value:', settings.enableSound);
-                console.log('[EnableSound] enableSound type:', typeof settings.enableSound);
                 // Only treat explicit true/'true' as enabled. Default to disabled.
                 const isEnabled = (settings.enableSound === true || settings.enableSound === 'true');
-                console.log('[EnableSound] Evaluated isEnabled:', isEnabled);
                 updateSoundControlsState(isEnabled);
             });
         };
@@ -163,20 +166,10 @@
 
         // Update enabled/disabled state of sound controls
         function updateSoundControlsState(enabled) {
-            console.log('[EnableSound] === UPDATE CONTROLS STATE ===');
-            console.log('[EnableSound] Setting controls to enabled:', enabled);
-
             const workSoundFile = document.querySelector('#workSoundFile');
             const breakSoundFile = document.querySelector('#breakSoundFile');
             const workPreviewBtn = document.querySelector('#workPreviewBtn');
             const breakPreviewBtn = document.querySelector('#breakPreviewBtn');
-
-            console.log('[EnableSound] Found elements:', {
-                workSoundFile: !!workSoundFile,
-                breakSoundFile: !!breakSoundFile,
-                workPreviewBtn: !!workPreviewBtn,
-                breakPreviewBtn: !!breakPreviewBtn
-            });
 
             if (workSoundFile) {
                 workSoundFile.disabled = !enabled;
@@ -194,13 +187,6 @@
                 breakPreviewBtn.disabled = !enabled;
                 if (!enabled) breakPreviewBtn.setAttribute('disabled', ''); else breakPreviewBtn.removeAttribute('disabled');
             }
-
-            console.log('[EnableSound] Controls disabled states:', {
-                workSoundFile: workSoundFile?.disabled,
-                breakSoundFile: breakSoundFile?.disabled,
-                workPreviewBtn: workPreviewBtn?.disabled,
-                breakPreviewBtn: breakPreviewBtn?.disabled
-            });
         }
 
         // Update button state based on playback
@@ -210,13 +196,19 @@
                 const button = document.querySelector('#workPreviewBtn');
                 if (button) {
                     button.textContent = isPlaying ? 'Stop' : 'Preview';
+                } else {
+                    console.warn('[ButtonState] Work preview button not found');
                 }
             } else if (playbackId === 'break-preview') {
                 playbackState.break = isPlaying;
                 const button = document.querySelector('#breakPreviewBtn');
                 if (button) {
                     button.textContent = isPlaying ? 'Stop' : 'Preview';
+                } else {
+                    console.warn('[ButtonState] Break preview button not found');
                 }
+            } else {
+                console.warn('[ButtonState] Unknown playbackId:', playbackId);
             }
         }
     </script>
@@ -291,6 +283,8 @@
 
             if (playbackState.work) {
                 // Stop playback
+                console.log('[Preview] Stopping work sound');
+                updateButtonState('work-preview', false); // Optimistic update
                 streamDeckClient.send('sendToPlugin', {
                     type: 'stopSound',
                     payload: { playbackId: 'work-preview' }
@@ -301,10 +295,14 @@
                 const filePath = fileInput?.value;
 
                 if (filePath) {
+                    console.log('[Preview] Starting work sound:', filePath);
+                    updateButtonState('work-preview', true); // Optimistic update
                     streamDeckClient.send('sendToPlugin', {
                         type: 'previewSound',
                         payload: { filePath, playbackId: 'work-preview' }
                     });
+                } else {
+                    console.warn('[Preview] No file selected for work sound');
                 }
             }
         };
@@ -314,6 +312,8 @@
 
             if (playbackState.break) {
                 // Stop playback
+                console.log('[Preview] Stopping break sound');
+                updateButtonState('break-preview', false); // Optimistic update
                 streamDeckClient.send('sendToPlugin', {
                     type: 'stopSound',
                     payload: { playbackId: 'break-preview' }
@@ -324,10 +324,14 @@
                 const filePath = fileInput?.value;
 
                 if (filePath) {
+                    console.log('[Preview] Starting break sound:', filePath);
+                    updateButtonState('break-preview', true); // Optimistic update
                     streamDeckClient.send('sendToPlugin', {
                         type: 'previewSound',
                         payload: { filePath, playbackId: 'break-preview' }
                     });
+                } else {
+                    console.warn('[Preview] No file selected for break sound');
                 }
             }
         };

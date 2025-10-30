@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 export class PomodoroTimer extends SingletonAction<PomodoroSettings> {
 	private timerManager = new TimerManager();
 	private displayGenerator = new DisplayGenerator();
-	private messageObserver = new PluginMessageObserver(false);
+	private messageObserver = new PluginMessageObserver(false); // Debug logging disabled (log statements remain in code)
     private keyDownAt: number | null = null;
     private readonly LONG_PRESS_MS = 2000;
     private longPressTimer: NodeJS.Timeout | null = null;

@@ -83,8 +83,20 @@ while ($true) {
   }
 
   stop(): void {
-    if (!this.ps || !this.ready) return;
-    try { this.ps.stdin.write('STOP\n'); } catch {}
+    if (!this.ps || !this.ready) {
+      streamDeck.logger.debug(`[AudioWin] stop() called but driver not ready`, { 
+        hasProcess: !!this.ps, 
+        ready: this.ready 
+      });
+      return;
+    }
+    try {
+      streamDeck.logger.debug(`[AudioWin] Sending STOP command to PowerShell host`);
+      this.ps.stdin.write('STOP\n');
+      streamDeck.logger.debug(`[AudioWin] STOP command sent`);
+    } catch (error) {
+      streamDeck.logger.error(`[AudioWin] Error sending STOP command:`, error);
+    }
   }
 
   dispose(): void {

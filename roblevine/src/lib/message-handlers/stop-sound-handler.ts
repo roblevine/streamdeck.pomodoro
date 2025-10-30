@@ -14,8 +14,12 @@ export function handleStopSound(
 	const { playbackId } = message.payload;
 
     try {
+        streamDeck.logger.debug(`[StopSoundHandler] Stopping playback: ${playbackId}`);
+        
         // Stop the audio player
-        AudioPlayer.stop();
+        AudioPlayer.stop(playbackId);
+
+        streamDeck.logger.debug(`[StopSoundHandler] Stop command completed for: ${playbackId}`);
 
         // Notify PI that playback stopped
         const response: PlaybackStoppedMessage = {

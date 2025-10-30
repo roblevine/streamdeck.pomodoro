@@ -18,7 +18,7 @@ export class AudioPlayer {
     try { if (!fs.existsSync(filePath)) return; } catch {}
 
     // Stop any currently playing audio
-    this.stop();
+    this.stop(undefined); // Stop any current playback when starting new one
 
     this.currentPlaybackId = playbackId;
     this.isCurrentlyPlaying = true;
@@ -42,10 +42,31 @@ export class AudioPlayer {
     }
   }
 
-  static stop(): void {
-    try { this.driver?.stop(); } catch {}
-    this.currentPlaybackId = null;
-    this.isCurrentlyPlaying = false;
+  static stop(playbackId?: string): void {
+    try {
+      streamDeck.logger.debug(`[AudioPlayer] stop() called`, { 
+        currentPlaybackId: this.currentPlaybackId, 
+        requestedPlaybackId: playbackId,
+        isCurrentlyPlaying: this.isCurrentlyPlaying,
+        hasDriver: !!this.driver
+      });
+      
+      // Only stop if playbackId matches (or if no playbackId specified, stop any)
+      if (playbackId && this.currentPlaybackId !== playbackId) {
+        streamDeck.logger.debug(`[AudioPlayer] stop() ignored - playbackId mismatch`);
+        return;
+      }
+      
+      if (this.driver) {
+        this.driver.stop();
+        streamDeck.logger.debug(`[AudioPlayer] driver.stop() called`);
+      }
+      
+      this.currentPlaybackId = null;
+      this.isCurrentlyPlaying = false;
+    } catch (error) {
+      streamDeck.logger.error(`[AudioPlayer] stop() error:`, error);
+    }
   }
 
   static dispose(): void {

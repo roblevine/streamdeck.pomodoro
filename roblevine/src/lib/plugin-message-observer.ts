@@ -18,6 +18,13 @@ export class PluginMessageObserver {
         this.debugMode = debugMode;
         this.log('PluginMessageObserver initialized');
     }
+    
+    /**
+     * Enable debug mode for this session
+     */
+    setDebugMode(enabled: boolean): void {
+        this.debugMode = enabled;
+    }
 
 	/**
 	 * Register a handler for a specific message type

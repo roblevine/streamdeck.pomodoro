@@ -14,6 +14,8 @@ export async function handlePreviewSound(
 	const { filePath, playbackId } = message.payload;
 
     try {
+        streamDeck.logger.debug(`[PreviewSoundHandler] Starting playback: ${playbackId}, file: ${filePath}`);
+        
         // Notify PI that playback started
         const startResponse: PlaybackStartedMessage = {
             type: 'playbackStarted',
@@ -21,8 +23,10 @@ export async function handlePreviewSound(
         };
         messageObserver.sendToPropertyInspector(context, startResponse);
 
-        // Play the audio (this will block until complete)
+        // Play the audio (this will block until complete on Windows, but not on macOS)
         await AudioPlayer.play(filePath, playbackId);
+
+        streamDeck.logger.debug(`[PreviewSoundHandler] Playback completed naturally: ${playbackId}`);
 
         // Notify PI that playback stopped (completed naturally)
         const stopResponse = {

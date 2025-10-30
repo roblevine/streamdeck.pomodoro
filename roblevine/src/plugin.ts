@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 
 import { PomodoroTimer } from "./actions/pomodoro-timer";
 
-// Temporarily set very verbose logging for debugging
-streamDeck.logger.setLevel(LogLevel.DEBUG);
+// Log level: INFO (suppresses DEBUG logs; set to LogLevel.DEBUG for troubleshooting)
+streamDeck.logger.setLevel(LogLevel.INFO);
 
 // Register the Pomodoro timer action.
 streamDeck.actions.registerAction(new PomodoroTimer());
