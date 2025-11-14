@@ -94,6 +94,34 @@ npm run build
 npm run watch
 ```
 
+The `npm run build` command automatically generates audio assets before compiling TypeScript.
+
+### Asset Generation
+
+The build process includes automatic generation of CC0-licensed audio assets:
+
+```bash
+# Generate audio assets (runs automatically during build)
+npm run build:assets
+```
+
+**Generated Assets** (in `uk.co.roblevine.streamdeck.pomodoro.sdPlugin/assets/sounds/`):
+
+- `reset-double-pip.wav`: Two-tone beep played on long-press reset (880 Hz, ~300ms total)
+- `key-click.wav`: Short click sound on button press (1800/3000 Hz blend, ~35ms)
+- `silent-prime.wav`: Silent 12ms WAV used to prime audio driver on startup (eliminates first-play latency)
+
+**Technical Details**:
+
+- Pure sine wave synthesis with no external dependencies
+- 44.1 kHz sample rate, 16-bit PCM, mono
+- Envelope shaping to prevent audio clicks
+- CC0 license (public domain)
+- Script: `scripts/generate-sounds.mjs`
+- Skips generation if files already exist (idempotent)
+
+**Purpose**: Pre-generated assets eliminate the need for bundled audio files and ensure consistent sound quality across platforms. The silent primer WAV is played on plugin startup to initialize the audio driver, reducing latency on the first actual sound playback.
+
 ### Project Structure
 
 ```
