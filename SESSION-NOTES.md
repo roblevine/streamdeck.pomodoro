@@ -331,3 +331,30 @@ static stop(playbackId?: string): void {
   this.currentPlaybackId = null;
 }
 ```
+
+## 2025-11-14
+
+Decisions
+- Defer Plan 0005 (Shared Global Timer) indefinitely.
+
+Rationale
+- Current per-instance timer model is working well and meets immediate needs.
+- No user requests or demonstrated demand for cross-instance timer synchronization.
+- Feature adds significant complexity (TimerRegistry, global settings persistence, migration path).
+- Better to focus on core stability, polish, and user-requested features first.
+- If demand emerges (multiple users requesting sync, use cases documented), can revisit.
+
+Rejected Alternatives
+- Implementing immediately: premature optimization without validated user need.
+- Rejecting permanently: keeps door open if use case becomes clear.
+
+Pending Intents
+- Monitor user feedback and feature requests for shared timer demand.
+- If implementing later, review plan for compatibility with evolved codebase.
+
+Heuristics
+- Defer features until user demand validates the complexity cost.
+- Keep architecture flexible to add features later without major refactoring.
+
+Bootstrap Snippet
+- N/A (deferred feature)

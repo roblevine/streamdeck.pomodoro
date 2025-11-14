@@ -1,6 +1,6 @@
 # 0005 — Shared Global Pomodoro Timer (multi‑instance sync)
 
-Status: Proposed
+Status: Deferred - Awaiting user demand; current per-instance model sufficient
 
 Owner: Rob / Plugin Team
 
