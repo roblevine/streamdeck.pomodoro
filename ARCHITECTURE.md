@@ -95,7 +95,29 @@ The Property Inspector uses raw WebSocket API to communicate with the plugin:
 - Configurable cycle parameters (durations, cycles before long break)
 - In-session resume across appear/disappear (page/profile switches)
 - Runtime state is not persisted across deletion; PI config is
- - Input semantics: short press pauses/resumes; double‑press skips to the next phase (no completion animation/sound); long-press (≥2000ms) resets
+
+### Input Handling
+
+**Short Press**: Pause/Resume
+- While running: pauses the timer and preserves remaining time
+- While paused: resumes countdown from where it left off
+- Visual feedback: ring blinks between phase color and red while paused
+
+**Double-Press**: Skip Phase
+- Detection window: 320ms between taps
+- Skips current (or pending) phase and advances to the next phase
+- If timer is running, stops immediately without completion effects
+- No completion animation or sound played for skips
+- Respects `pauseAtEndOfEachTimer` setting for next phase
+- See `plans/0004-double-press-skip.md` for detailed semantics
+
+**Long-Press**: Reset (≥2000ms)
+- Resets timer and cycle count to initial state
+- Works from any state (running, paused, or pending)
+- Triggers reset feedback: 3 ring flashes + double-pip sound (if audio enabled)
+- See `plans/0006-reset-feedback.md` for reset feedback details
+
+**Interaction**: Long-press takes precedence after 2000ms threshold; double-press only applies to short presses within 320ms window.
 
 ### Audio Notifications
 
