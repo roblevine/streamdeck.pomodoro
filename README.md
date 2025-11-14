@@ -46,7 +46,7 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
 1. **Add Action**: Drag "Pomodoro Timer" from the actions list to a Stream Deck button
 2. **Start**: Press the button to start the countdown
 3. **Pause/Resume**: Press while running to pause; press again to resume
-4. **Skip**: Double‑press to skip to the next phase (stops if running; no completion effects)
+4. **Skip**: Double-press (two taps within 320ms) to skip to the next phase (stops if running; no completion effects)
 5. **Reset**: Long-press (2 seconds) to reset timer and cycle to start
 6. **Completion**: When time expires, the button shows "Done" with a spinning dashed ring; sound plays if enabled
 
@@ -66,9 +66,10 @@ Click on the Pomodoro Timer button in Stream Deck to open the Property Inspector
 
 ### Behavior Summary
 
-- Short press pauses/resumes mid-timer; long press (2 seconds) resets timer and cycle count
-  - On reset, the ring flashes several times and a short double-pip sound plays when audio is enabled
-- Double‑press skips the current (or pending) phase and advances to the next; if the timer is running it is stopped first; no completion animation/sound is played for skips
+- **Short press**: Pauses/resumes mid-timer
+- **Double-press** (within 320ms): Skips current (or pending) phase and advances to the next; stops timer if running; no completion animation/sound
+- **Long press** (2 seconds): Resets timer and cycle count; ring flashes 3 times and double-pip sound plays when audio is enabled
+- **Input precedence**: Long-press takes over after 2 seconds; double-press only applies to short presses
 - If "Pause At End Of Each Phase" is on, next phase waits for a press; otherwise auto-starts
 - When a timer completes, "Done" shows with a spinning dashed ring; sound (if enabled) plays in parallel; the hold lasts at least the configured seconds, longer if the sound is still playing
 

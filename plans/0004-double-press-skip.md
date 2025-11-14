@@ -4,7 +4,7 @@ Status: Implemented
 Date: 2025-10-12
 
 Decisions (Locked)
-- Double-press window: 300–350 ms (320 ms target).
+- Double-press window: 320ms (two taps within 320ms are detected as double-press).
 - PausedNext behavior: double-press skips the pending phase.
 - Skipping never plays completion animation or sound.
 - Always enabled (no setting for this behavior).
