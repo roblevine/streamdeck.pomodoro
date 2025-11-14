@@ -25,7 +25,9 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
   - Windows uses a persistent PowerShell host; macOS uses `afplay`
   - Key click on every press (respects Enable Sound)
 - In-session resume when hidden/shown (page/profile switches); runtime is not persisted across deletion
-- Time display in MM:SS## Requirements
+- Time display in MM:SS
+
+## Requirements
 
 - **Stream Deck Software**: Version 6.5 or higher
 - **Operating System**:
