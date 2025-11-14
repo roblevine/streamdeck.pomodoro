@@ -109,10 +109,11 @@ roblevine/
 │       ├── audio-player.ts                 # AudioPlayer facade
 │       ├── defaults.ts                     # Default configuration values
 │       ├── display-generator.ts            # SVG generation for button display
+│       ├── message-handlers/               # Property Inspector message handlers
+│       │   ├── preview-sound-handler.ts    # Preview button handler
+│       │   └── stop-sound-handler.ts       # Stop sound handler
 │       ├── plugin-message-observer.ts      # Message routing pattern
 │       ├── pomodoro-cycle.ts               # Pomodoro cycle state management
-│       ├── preview-sound-handler.ts        # Preview button message handler
-│       ├── stop-sound-handler.ts           # Stop sound message handler
 │       ├── timer-manager.ts                # Timer lifecycle management
 │       ├── workflow.ts                     # State machine definition
 │       └── workflow-controller.ts          # Workflow controller (ports implementation)

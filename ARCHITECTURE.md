@@ -36,10 +36,11 @@ roblevine/
 │       ├── audio-player.ts          # AudioPlayer facade
 │       ├── defaults.ts              # Default configuration values
 │       ├── display-generator.ts     # SVG generation for button display
+│       ├── message-handlers/         # Property Inspector message handlers
+│       │   ├── preview-sound-handler.ts # Preview button handler
+│       │   └── stop-sound-handler.ts    # Stop sound handler
 │       ├── plugin-message-observer.ts # Message routing pattern
 │       ├── pomodoro-cycle.ts        # Pomodoro cycle state management
-│       ├── preview-sound-handler.ts # Preview button message handler
-│       ├── stop-sound-handler.ts    # Stop sound message handler
 │       ├── timer-manager.ts         # Timer lifecycle management
 │       ├── workflow.ts              # State machine definition (354 lines)
 │       └── workflow-controller.ts   # Workflow controller (ports implementation)
@@ -85,6 +86,57 @@ The Property Inspector uses raw WebSocket API to communicate with the plugin:
 * **Important**: Messages from Property Inspector to plugin must use `pluginUUID` as context (not `actionInfo.context`)
 * WebSocket connection established via `connectElgatoStreamDeckSocket()` callback
 * Custom messages sent via `sendToPlugin()` event and handled by action's `onSendToPlugin()` method
+
+### Message Handler Pattern
+
+The plugin uses an observable pattern to route Property Inspector messages to specific handlers:
+
+**Architecture Components**
+
+- `PluginMessageObserver`: Central message dispatcher with handler registration
+- Message handlers: Individual functions in `lib/message-handlers/` that handle specific message types
+- Type-safe message interfaces: Defined in `types/messages.ts`
+
+**Message Flow**
+
+1. Property Inspector sends message via WebSocket (`sendToPlugin()`)
+2. Action's `onSendToPlugin()` receives message and forwards to `PluginMessageObserver`
+3. Observer dispatches to all registered handlers for that message type
+4. Handlers execute (can be async), perform actions, and send responses back to Property Inspector
+5. Observer sends response via `sendToPropertyInspector()`
+
+**Handler Registration**
+
+Handlers are registered at action initialization:
+
+```typescript
+messageObserver.registerHandler('previewSound', (ctx, msg) =>
+    handlePreviewSound(ctx, msg, messageObserver)
+);
+messageObserver.registerHandler('stopSound', (ctx, msg) =>
+    handleStopSound(ctx, msg, messageObserver)
+);
+```
+
+**Current Handlers**
+
+- `preview-sound-handler`: Plays audio preview and sends playback status messages (`playbackStarted`, `playbackStopped`)
+- `stop-sound-handler`: Stops audio playback and notifies Property Inspector
+
+**Benefits**
+
+- Separation of concerns: Message routing separated from handler logic
+- Extensibility: New message types added by registering additional handlers
+- Error isolation: Handler exceptions don't crash the action; logged via Stream Deck logger
+- Type safety: TypeScript interfaces for all message payloads
+- Testability: Handlers are pure functions that can be tested independently
+
+**Implementation Files**
+
+- `lib/plugin-message-observer.ts`: Observer pattern implementation
+- `lib/message-handlers/preview-sound-handler.ts`: Preview audio handler
+- `lib/message-handlers/stop-sound-handler.ts`: Stop audio handler
+- `types/messages.ts`: Message type definitions
 
 ### Logging
 
