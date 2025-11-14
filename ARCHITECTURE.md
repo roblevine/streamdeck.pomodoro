@@ -152,6 +152,104 @@ The Property Inspector uses raw WebSocket API to communicate with the plugin:
 - onWillAppear (existing): rebind action, re-render current state without restarting timers
 - onWillDisappear: no cleanup (to retain in-session state); long-press reset clears runtime
 
+## Workflow State Machine
+
+The plugin uses a dependency-free state machine (`lib/workflow.ts`) to manage Pomodoro cycle transitions, timer lifecycle, and user inputs. The state machine separates business logic from Stream Deck SDK concerns.
+
+### States
+
+**Idle State**
+- `idle`: Initial state; shows full work ring; ready to start first work session
+
+**Running States** (timer actively counting down)
+- `workRunning`: Work session in progress
+- `shortBreakRunning`: Short break in progress
+- `longBreakRunning`: Long break in progress
+
+**Paused States**
+- `pausedInFlight`: Timer paused mid-countdown; preserves remaining time; ring blinks phase color/red
+- `pausedNext`: Waiting at phase boundary for user to start next phase (when `pauseAtEndOfEachTimer` is enabled)
+
+**Completion States** (animation + sound playing)
+- `workComplete`: Work session finished; playing completion effects; increments cycle; determines next break type
+- `shortBreakComplete`: Short break finished; playing completion effects
+- `longBreakComplete`: Long break finished; playing completion effects; resets cycle index
+
+### Events
+
+**User Input Events**
+- `SHORT_PRESS`: Pause/resume or start pending phase
+- `DOUBLE_PRESS`: Skip current/pending phase without completion effects
+- `LONG_PRESS`: Reset to idle with feedback (≥2000ms)
+
+**System Events**
+- `TIMER_DONE`: Timer countdown reached zero
+- `COMPLETE_ANIM_DONE`: Completion animation and sound finished playing
+- `APPEAR`: Action appeared on Stream Deck (not currently used for transitions)
+- `DISAPPEAR`: Action disappeared from view (not currently used for transitions)
+- `SETTINGS_CHANGED`: Configuration updated via Property Inspector (not currently used for transitions)
+
+### Key Transitions
+
+**Starting Timers**
+- `idle` + SHORT_PRESS → `workRunning`
+- `pausedNext` + SHORT_PRESS → start pending phase (work/short/long break running)
+- `pausedInFlight` + SHORT_PRESS → resume to appropriate running state based on `ctx.phase`
+
+**Pausing**
+- Any running state + SHORT_PRESS → `pausedInFlight` (stops timer, preserves remaining time)
+
+**Skipping (Double-Press)**
+- Running/paused work + DOUBLE_PRESS → next break (short or long based on cycle)
+- Running/paused break + DOUBLE_PRESS → work
+- Respects `pauseAtEndOfEachTimer`: lands on `pausedNext` or auto-starts next phase
+- Increments/resets cycle index appropriately
+- No completion effects
+
+**Completion Flow**
+- Running state + TIMER_DONE → completion state (work/short/long break complete)
+- Completion state: runs animation + sound in parallel, dispatches COMPLETE_ANIM_DONE when done
+- Completion state + COMPLETE_ANIM_DONE → `pausedNext` (if pausing enabled) or auto-start next phase
+
+**Resetting**
+- Any state + LONG_PRESS → `idle` (stops timers, resets cycle, shows reset feedback)
+
+### Guards and Conditions
+
+**Guards** control which transition is taken when multiple options exist:
+
+- `pauseAtEnd`: Checks if `pauseAtEndOfEachTimer` setting is enabled (default: true)
+- `longBreakDue`: Checks if `(cycleIndex + 1) >= cyclesBeforeLongBreak`
+- Phase checks: `ctx.phase === 'work'` / `'shortBreak'` / `'longBreak'`
+- Pending phase checks: `ctx.pendingNext === 'work'` / `'shortBreak'` / `'longBreak'`
+
+Transitions are evaluated in order; first matching guard wins.
+
+### Port Interface
+
+The state machine communicates with the outside world via the `Ports` interface (implemented by `WorkflowController`):
+
+**Display Ports**
+- `showFull(phase, durationSec)`: Render full donut ring for a phase
+- `updateRunning(remainingSec, totalSec, phase)`: Update countdown display while running
+- `showPaused(remainingSec, totalSec, phase)`: Show paused state with blinking ring
+- `showCompletionWithSound(kind, durationMs)`: Play completion animation + sound; dispatch COMPLETE_ANIM_DONE when done
+- `showResetFeedback()`: Flash ring 3x and play double-pip sound
+
+**Timer Ports**
+- `startTimer(phase, durationSec, onDone)`: Start countdown; call `onDone` when complete (dispatches TIMER_DONE)
+- `stopTimer()`: Stop active countdown
+
+This port-based design allows the state machine to remain pure (no direct dependencies on Stream Deck SDK, audio player, or display generator).
+
+### Implementation Files
+
+- `lib/workflow.ts` (354 lines): State machine definition, states, events, transitions, guards
+- `lib/workflow-controller.ts`: Implements Ports interface; bridges state machine and Stream Deck action
+- `actions/pomodoro-timer.ts`: Detects user inputs (short/double/long press); dispatches events to controller
+
+See `plans/0003-pomodoro-workflow.md` for detailed design decisions and implementation notes.
+
 ### Inputs and Events
 
 - Short press → SHORT_PRESS
