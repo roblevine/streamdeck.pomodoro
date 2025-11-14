@@ -251,6 +251,63 @@ The plugin follows the Elgato Stream Deck SDK architecture:
 
 Rob Levine
 
+## Troubleshooting
+
+### Missing Sound Files
+
+**Issue**: Configured sound files deleted or path invalid
+
+**Behavior**: The plugin operates silently without errors when sound files are missing:
+- Audio playback is skipped (no error shown to user)
+- Visual feedback continues normally (completion animation, reset flash)
+- Timer and workflow continue functioning
+- Plugin logs will show file access errors if log level is DEBUG or TRACE
+
+**Solution**: Verify sound file paths in Property Inspector settings, or disable "Enable Sound" if audio is not needed.
+
+### Completion Hold Duration
+
+**Issue**: "Done" state appears to last longer than configured completion hold
+
+**Behavior**: The completion hold extends automatically when sound playback exceeds the configured duration:
+- Hold duration = `max(completionHoldSeconds, actualSoundDuration)`
+- If sound is 5 seconds and hold is configured for 3 seconds, hold will last 5 seconds
+- Sound and animation run in parallel; hold waits for both to complete
+- This ensures sound is never cut off prematurely
+
+**This is by design**, not a bug. Adjust `completionHoldSeconds` or use shorter sound files if needed.
+
+### Double-Press vs Long-Press Interaction
+
+**Issue**: Confusion about when double-press vs long-press is triggered
+
+**Behavior**: Input detection follows strict precedence rules:
+- **Long-press detection starts at button down**: A 2-second timer begins when you press the button
+- **Long-press triggers at 2 seconds**: If you hold for ≥2 seconds, long-press fires immediately (reset action)
+- **Double-press window is 320ms**: Two taps within 320ms trigger skip (only applies to short presses)
+- **Long-press takes precedence**: If you hold past 2 seconds, it becomes a reset regardless of previous taps
+
+**Examples**:
+- Tap, wait 100ms, tap again → Double-press (skip)
+- Tap, wait 500ms, tap again → Two separate short presses (pause/unpause twice)
+- Press and hold for 2+ seconds → Long-press (reset)
+- Tap, then hold second press for 2+ seconds → Long-press on second tap (reset)
+
+### Audio Not Playing
+
+**Issue**: Sounds enabled but no audio plays
+
+**Check**:
+1. Verify "Enable Sound" is checked in Property Inspector
+2. Confirm sound file paths are valid and files exist
+3. Test with preview buttons in Property Inspector
+4. Check OS audio output is not muted
+5. On Windows: Ensure PowerShell execution is not blocked by security policy
+6. On macOS: Verify `afplay` command works in terminal
+7. Check plugin logs for audio driver errors
+
+**Note**: First sound playback may have slight delay (~50-100ms) as audio driver initializes. Silent primer WAV played on startup minimizes this.
+
 ## Known Limitations
 
 ### Audio Preview Stop Button
