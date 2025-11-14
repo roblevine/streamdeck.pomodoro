@@ -109,7 +109,7 @@ Progress
 
 Completion Summary
 - Pause/resume on short press implemented and verified.
-- Long-press reset (>2s) implemented from all states with watchdog.
+- Long-press reset (≥2000ms) implemented from all states with watchdog.
 - Appear/resume/expiry handled by controller/workflow; legacy paths removed.
 - Boundary pause honored (pauseAtEndOfEachTimer, default true).
 - PI toggle for pauseAtEndOfEachTimer added and persisted.

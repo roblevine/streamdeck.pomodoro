@@ -4,7 +4,7 @@ Status: Implemented
 Date: 2025-10-19
 
 Decisions (Locked)
-- Trigger on long-press reset (>2s) only.
+- Trigger on long-press reset (≥2000ms) only.
 - Ring flashes several times (3 flashes) at ~120ms on/off cadence.
 - Short double-pip sound plays when `enableSound` is true.
 - Sound asset: single bundled WAV named `reset-double-pip.wav` under `sdPlugin/assets/sounds/` with redistribution-friendly license.

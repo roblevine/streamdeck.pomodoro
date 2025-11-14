@@ -21,7 +21,7 @@ Scope
 
 User Experience
 - Single press: pause/resume as today.
-- Long press (≥2s): reset to idle as today.
+- Long press (≥2000ms): reset to idle as today.
 - Double-press: skip current phase. If running, the timer stops immediately, no completion effects.
   - Work → next is short or long break per cycle; cycle index increments.
   - Short/Long Break → next is Work; long break skip resets cycle index.
@@ -60,7 +60,7 @@ Manual Test Plan
 4. PausedInFlight (any phase) → double-press: advances as above, no completion effects.
 5. PausedNext with pending work → double-press: computes following break (inc cycle) and either shows pausedNext or starts it.
 6. PausedNext with pending short/long break → double-press: goes to work (reset cycle for long); pauseAtEnd gates start.
-7. Single press still pause/resumes; long-press (≥2s) still resets.
+7. Single press still pause/resumes; long-press (≥2000ms) still resets.
 
 Implementation Checklist
 - [x] Action: add double-tap detection and dispatch.
