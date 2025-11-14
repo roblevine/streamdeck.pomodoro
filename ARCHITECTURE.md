@@ -29,15 +29,34 @@ roblevine/
 │   ├── actions/
 │   │   └── pomodoro-timer.ts        # Pomodoro timer action implementation
 │   └── lib/
-│       ├── audio-player.ts          # Cross-platform audio playback utility
+│       ├── audio-driver/            # Audio driver implementations
+│       │   ├── driver.ts            # AudioDriver interface and factory
+│       │   ├── windows-persistent.ts # Windows PowerShell driver
+│       │   └── macos-system.ts      # macOS/Linux afplay/aplay driver
+│       ├── audio-player.ts          # AudioPlayer facade
+│       ├── defaults.ts              # Default configuration values
 │       ├── display-generator.ts     # SVG generation for button display
+│       ├── plugin-message-observer.ts # Message routing pattern
 │       ├── pomodoro-cycle.ts        # Pomodoro cycle state management
-│       └── timer-manager.ts         # Timer lifecycle management
+│       ├── preview-sound-handler.ts # Preview button message handler
+│       ├── stop-sound-handler.ts    # Stop sound message handler
+│       ├── timer-manager.ts         # Timer lifecycle management
+│       ├── workflow.ts              # State machine definition (354 lines)
+│       └── workflow-controller.ts   # Workflow controller (ports implementation)
 ├── plans/
-│   └── audio-notifications.md       # Audio feature documentation
+│   ├── 0001-audio-notifications.md # Audio feature implementation
+│   ├── 0002-preview-button-toggle.md # Preview/stop button feature
+│   ├── 0003-pomodoro-workflow.md   # Workflow state machine
+│   ├── 0004-double-press-skip.md   # Double-press skip feature
+│   ├── 0005-shared-global-timer.md # Proposed shared timer (not implemented)
+│   ├── 0006-reset-feedback.md      # Reset feedback implementation
+│   └── 0007-documentation-remediation.md # Documentation improvement plan
+├── scripts/
+│   └── generate-sounds.mjs          # Build-time sound asset generation
 └── uk.co.roblevine.streamdeck.pomodoro.sdPlugin/
     ├── manifest.json                # Stream Deck plugin metadata and action definitions
     ├── bin/plugin.js                # Built plugin code (generated)
+    ├── assets/sounds/               # Audio assets (generated at build)
     └── ui/
         └── pomodoro-timer.html      # Property inspector UI for timer settings
 ```

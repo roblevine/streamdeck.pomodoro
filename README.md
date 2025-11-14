@@ -14,15 +14,14 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
   - Light Green: Long break
 - Pause controls
   - Short press: pause/resume mid-timer (ring blinks phase/red while paused)
-  - Long press (>2s): full reset to start
+  - Long press (2 seconds): full reset to start
   - On reset: ring flashes several times; a short double-pip plays (if sound enabled)
 - Completion feedback
   - Spinning dashed white ring with "Done" during a configurable hold
   - Sound and animation run concurrently; hold extends if sound is longer
 - Audio notifications (WAV)
   - Separate sounds for work completion and break completion
-  - Preview buttons with play/stop toggle for testing sounds
-  - Enable/disable toggle for all audio notifications
+  - Preview buttons and enable/disable toggle
   - Windows uses a persistent PowerShell host; macOS uses `afplay`
   - Key click on every press (respects Enable Sound)
 - In-session resume when hidden/shown (page/profile switches); runtime is not persisted across deletion
@@ -48,7 +47,7 @@ A feature-rich Pomodoro timer plugin for Elgato Stream Deck, built with TypeScri
 2. **Start**: Press the button to start the countdown
 3. **Pause/Resume**: Press while running to pause; press again to resume
 4. **Skip**: Double‑press to skip to the next phase (stops if running; no completion effects)
-5. **Reset**: Long‑press (≥2s) to reset timer and cycle to start
+5. **Reset**: Long-press (2 seconds) to reset timer and cycle to start
 6. **Completion**: When time expires, the button shows "Done" with a spinning dashed ring; sound plays if enabled
 
 ### Configuration
@@ -67,7 +66,7 @@ Click on the Pomodoro Timer button in Stream Deck to open the Property Inspector
 
 ### Behavior Summary
 
-- Short press pauses/resumes mid-timer; long press (>2s) resets timer and cycle count
+- Short press pauses/resumes mid-timer; long press (2 seconds) resets timer and cycle count
   - On reset, the ring flashes several times and a short double-pip sound plays when audio is enabled
 - Double‑press skips the current (or pending) phase and advances to the next; if the timer is running it is stopped first; no completion animation/sound is played for skips
 - If "Pause At End Of Each Phase" is on, next phase waits for a press; otherwise auto-starts
@@ -103,15 +102,34 @@ roblevine/
 │   ├── actions/
 │   │   └── pomodoro-timer.ts               # Pomodoro timer action
 │   └── lib/
-│       ├── audio-player.ts                 # Cross-platform audio playback
+│       ├── audio-driver/                   # Audio driver implementations
+│       │   ├── driver.ts                   # AudioDriver interface and factory
+│       │   ├── windows-persistent.ts       # Windows PowerShell driver
+│       │   └── macos-system.ts             # macOS/Linux afplay/aplay driver
+│       ├── audio-player.ts                 # AudioPlayer facade
+│       ├── defaults.ts                     # Default configuration values
 │       ├── display-generator.ts            # SVG generation for button display
+│       ├── plugin-message-observer.ts      # Message routing pattern
 │       ├── pomodoro-cycle.ts               # Pomodoro cycle state management
-│       └── timer-manager.ts                # Timer lifecycle management
+│       ├── preview-sound-handler.ts        # Preview button message handler
+│       ├── stop-sound-handler.ts           # Stop sound message handler
+│       ├── timer-manager.ts                # Timer lifecycle management
+│       ├── workflow.ts                     # State machine definition
+│       └── workflow-controller.ts          # Workflow controller (ports implementation)
 ├── plans/
-│   └── audio-notifications.md              # Audio feature documentation
+│   ├── 0001-audio-notifications.md        # Audio feature implementation
+│   ├── 0002-preview-button-toggle.md      # Preview/stop button feature
+│   ├── 0003-pomodoro-workflow.md          # Workflow state machine
+│   ├── 0004-double-press-skip.md          # Double-press skip feature
+│   ├── 0005-shared-global-timer.md        # Proposed shared timer (not implemented)
+│   ├── 0006-reset-feedback.md             # Reset feedback implementation
+│   └── 0007-documentation-remediation.md  # Documentation improvement plan
+├── scripts/
+│   └── generate-sounds.mjs                 # Build-time sound asset generation
 └── uk.co.roblevine.streamdeck.pomodoro.sdPlugin/
     ├── manifest.json                       # Plugin metadata
     ├── bin/plugin.js                       # Compiled plugin (generated)
+    ├── assets/sounds/                      # Audio assets (generated at build)
     └── ui/
         └── pomodoro-timer.html             # Timer settings UI
 ```
@@ -202,6 +220,19 @@ The plugin follows the Elgato Stream Deck SDK architecture:
 ## Author
 
 Rob Levine
+
+## Known Limitations
+
+### Audio Preview Stop Button
+
+The Property Inspector includes preview buttons to test work/break completion sounds. While the preview playback works correctly, the stop functionality does not currently work:
+
+- **Working**: Clicking "Preview" plays the selected sound; button changes to "Stop"
+- **Not Working**: Clicking "Stop" changes the button text back to "Preview" but audio continues playing until completion
+
+**Workaround**: Wait for the audio to complete (typically 1-3 seconds), or start another preview to stop the current one.
+
+See [Plan 0002](plans/0002-preview-button-toggle.md) for technical details and debugging notes.
 
 ## License
 
