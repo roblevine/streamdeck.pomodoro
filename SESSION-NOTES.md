@@ -1,4 +1,4 @@
-Date: 2025-10-10
+## 2025-10-10 (Session 1: enableSound UI handling)
 
 Decisions
 - Treat `enableSound` as enabled only when explicitly true/'true' in PI and Plugin.
@@ -23,7 +23,7 @@ Bootstrap Snippet
 - In PI: `const isEnabled = settings.enableSound === true || settings.enableSound === 'true'; updateSoundControlsState(isEnabled);`
 - In Plugin: `const soundOn = settings.enableSound === true || settings.enableSound === 'true'; if (soundOn) { /* play */ }`
 
-Date: 2025-10-10
+## 2025-10-10 (Session 2: Workflow state machine planning)
 
 Decisions
 - Short press while running pauses/resumes; long press resets to idle.
@@ -53,7 +53,7 @@ Heuristics
 
 Bootstrap Snippet
 ```ts
-// Key press classification in action
+// Key press classification in action (early design)
 let keyDownAt: number | null = null;
 const LONG_PRESS_MS = 700;
 
@@ -65,7 +65,7 @@ onKeyUp: () => {
 }
 ```
 
-Date: 2025-10-10
+## 2025-10-10 (Session 3: Workflow implementation)
 
 Decisions
 - Ship pause/resume on short press; long-press (>2s) reset from all states.
@@ -90,7 +90,7 @@ Heuristics
 
 Bootstrap Snippet
 ```ts
-// Robust long-press in action
+// Robust long-press in action (final design)
 let longPressTimer: NodeJS.Timeout | null = null;
 let longPressFired = false;
 const LONG_PRESS_MS = 2000;
@@ -105,7 +105,8 @@ onKeyUp: () => {
   if (!longPressFired) dispatch('SHORT_PRESS');
 }
 ```
-Date: 2025-10-10
+
+## 2025-10-10 (Session 4: Completion hold tuning)
 
 Decisions
 - Increase default `completionHoldSeconds` to 3 seconds while keeping `pauseAtEndOfEachTimer` enabled by default.
@@ -130,7 +131,37 @@ export const DEFAULT_CONFIG = {
   completionHoldSeconds: 3
 };
 ```
-Date: 2025-10-12
+
+## 2025-10-10 (Session 5: Default config centralization)
+
+Decisions
+- Centralize default values in `DEFAULT_CONFIG`, relying on runtime to propagate them to UI/pipeline.
+
+Rationale
+- Avoids drift between runtime and property inspector defaults and keeps a single source of truth.
+
+Rejected Alternatives
+- Importing default literals into PI markup via build-time templating (overkill for current scale).
+
+Pending Intents
+- Observe PI load timing to ensure defaults arrive before user interaction on fresh installs.
+
+Heuristics
+- When a UI control needs a default, push it from plugin state rather than duplicating constants in markup.
+
+Bootstrap Snippet
+```ts
+if (!settings.workDuration) {
+  await action.setSettings({
+    ...DEFAULT_CONFIG,
+    ...settings,
+    currentPhase: 'work',
+    currentCycleIndex: 0
+  });
+}
+```
+
+## 2025-10-12
 
 Decisions
 - Add double-press to skip the current (or pending) phase.
@@ -170,34 +201,6 @@ if (lastTapAt && (Date.now() - lastTapAt) <= DOUBLE_TAP_MS) {
 } else {
   lastTapAt = Date.now();
   singlePressTimer = setTimeout(() => controller.shortPress(action, settings), DOUBLE_TAP_MS + 20);
-}
-```
-Date: 2025-10-10
-
-Decisions
-- Centralize default values in `DEFAULT_CONFIG`, relying on runtime to propagate them to UI/pipeline.
-
-Rationale
-- Avoids drift between runtime and property inspector defaults and keeps a single source of truth.
-
-Rejected Alternatives
-- Importing default literals into PI markup via build-time templating (overkill for current scale).
-
-Pending Intents
-- Observe PI load timing to ensure defaults arrive before user interaction on fresh installs.
-
-Heuristics
-- When a UI control needs a default, push it from plugin state rather than duplicating constants in markup.
-
-Bootstrap Snippet
-```ts
-if (!settings.workDuration) {
-  await action.setSettings({
-    ...DEFAULT_CONFIG,
-    ...settings,
-    currentPhase: 'work',
-    currentCycleIndex: 0
-  });
 }
 ```
 ## 2025-10-19
