@@ -259,17 +259,75 @@ See `plans/0001-audio-notifications.md` for detailed design decisions and evolut
 
 ## State Management
 
+The plugin maintains two types of state: persisted configuration and ephemeral runtime state.
+
 ### Config vs Runtime
 
-- ConfigSettings (persisted via PI): durations, cyclesBeforeLongBreak, pauseAtEndOfEachTimer, enableSound, workEndSoundPath, breakEndSoundPath, completionHoldSeconds
-- RuntimeState (in-memory only): phase, cycleIndex, running, remaining, pendingNext
-- Ctx = RuntimeState + ConfigSettings
+**ConfigSettings** (persisted via Stream Deck)
+- Stored via `action.setSettings()` and retrieved via `action.getSettings()`
+- Persisted to Stream Deck's profile storage (survives plugin restarts, profile switches)
+- Updated when user changes values in Property Inspector
+- Fields: `workDuration`, `shortBreakDuration`, `longBreakDuration`, `cyclesBeforeLongBreak`, `pauseAtEndOfEachTimer`, `enableSound`, `workEndSoundPath`, `breakEndSoundPath`, `completionHoldSeconds`
+
+**RuntimeState** (in-memory only)
+- Lives only in action instance memory (not persisted via `setSettings()`)
+- Reset when action is deleted from Stream Deck button
+- Preserved during profile switches or temporary disappearance (page navigation)
+- Fields: `phase` (current phase: work/shortBreak/longBreak), `cycleIndex` (current cycle count), `running` (timer active), `remaining` (seconds left if paused mid-timer), `pendingNext` (next phase when in pausedNext state)
+
+**Context (Ctx)**
+- Combined view: `Ctx = RuntimeState + ConfigSettings`
+- Passed to workflow state machine and ports for decision-making
+- Workflow reads both config and runtime to determine transitions
+
+### Persistence Mechanism
+
+**Stream Deck SDK**
+- Settings persisted via `action.setSettings(settings)` (async)
+- Settings retrieved via `action.getSettings()` (async)
+- Stored in Stream Deck profile JSON (per action instance, per button)
+- Survive plugin restarts, Stream Deck restarts, profile switches
+
+**Default Values**
+- Centralized in `lib/defaults.ts` as `DEFAULT_CONFIG`
+- Applied on first `onWillAppear` when settings object is empty or missing keys
+- Property Inspector uses same defaults for initial UI state
+- Example defaults: workDuration='25:00', pauseAtEndOfEachTimer=true, enableSound=false
+
+**Runtime State**
+- Stored in `Map<string, WorkflowController>` keyed by action context ID
+- Controller holds workflow instance with current runtime state
+- Not persisted; action deletion destroys controller and runtime state
+- Long-press reset clears runtime state (sets to idle/work/cycle 0)
 
 ### Lifecycle
 
-- onWillAppear (fresh): initialize controller/workflow with neutral state (pausedNext/work)
-- onWillAppear (existing): rebind action, re-render current state without restarting timers
-- onWillDisappear: no cleanup (to retain in-session state); long-press reset clears runtime
+**onWillAppear (fresh)**
+- No existing controller for this context
+- Load settings via `getSettings()`, merge with `DEFAULT_CONFIG`
+- Initialize new `WorkflowController` with neutral runtime state (pausedNext/work, cycle 0)
+- Render full display for work phase
+
+**onWillAppear (existing)**
+- Controller already exists for this context (action previously appeared, then disappeared)
+- Rebind action reference to controller
+- Re-render current state without restarting timers or resetting runtime
+- Preserves in-session progress across page/profile switches
+
+**onWillDisappear**
+- Action hidden (page switch, profile change)
+- No cleanup performed to retain in-session state
+- Controller and runtime state remain in memory
+- Timer continues running in background (will fire completion even while hidden)
+
+**Action Deletion**
+- User removes action from button in Stream Deck
+- Action context destroyed
+- Controller removed from map, garbage collected
+- Runtime state lost (next placement starts fresh)
+- ConfigSettings remain in Stream Deck profile (can be recovered if action re-added to same button)
+
+**Note**: "Deletion" means removing action from Stream Deck button; "Disappear" means temporary hiding (page switch). Only deletion clears runtime state.
 
 ## Workflow State Machine
 
