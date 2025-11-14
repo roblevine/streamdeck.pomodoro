@@ -121,13 +121,61 @@ The Property Inspector uses raw WebSocket API to communicate with the plugin:
 
 ### Audio Notifications
 
-* Cross-platform playback with OS-specific drivers
-  - Windows: persistent PowerShell subprocess using System.Media.SoundPlayer (low-latency without per-play spawn)
-  - macOS: afplay per play (fast enough), same abstraction
+The plugin provides cross-platform audio playback with no external npm dependencies, using OS-specific system commands via a driver abstraction.
+
+**Driver Architecture**
+
+The audio subsystem uses a driver pattern to abstract platform differences:
+
+- `AudioDriver` interface: Defines `init()`, `play(filePath)`, `stop()`, `dispose()` methods
+- `AudioPlayer` facade: Singleton that manages driver lifecycle and playback state
+- `createAudioDriver()` factory: Selects appropriate driver based on `process.platform`
+
+**Platform-Specific Drivers**
+
+**Windows: `WindowsPersistentDriver`**
+- Spawns a persistent PowerShell subprocess on first play
+- PowerShell script keeps `System.Media.SoundPlayer` resident in memory
+- Accepts commands via stdin: `PLAYB64 <base64-path>`, `STOP`, `EXIT`
+- Low-latency playback: eliminates per-play process startup overhead (~500-1000ms saved)
+- Disposed on plugin shutdown via `EXIT` command
+
+**macOS: `MacOsSystemDriver`**
+- Uses `afplay` system command per play (spawned on demand)
+- Fast enough without persistence (~50-100ms startup)
+- Stopped via `SIGKILL` signal to child process
+- Simple implementation: no initialization required
+
+**Linux: `MacOsSystemDriver` (with `aplay`)**
+- Reuses macOS driver implementation with `aplay` command
+- Basic fallback: environment-dependent (requires ALSA utilities)
+- Same spawn-per-play approach as macOS
+- Not extensively tested; best-effort support
+
+**Features**
+
 * Configurable WAV files for work completion and break completion
 * Preview buttons in Property Inspector for testing sounds
 * Enable/disable toggle for audio notifications
-* See `plans/audio-notifications.md` for detailed implementation
+* Key-click sound on button press (respects Enable Sound setting)
+* Silent WAV priming on startup to initialize audio driver
+* Build-time generation of CC0-licensed sound assets (see `scripts/generate-sounds.mjs`)
+
+**Driver Lifecycle**
+
+- Driver created on first `AudioPlayer.play()` call (lazy initialization)
+- Driver initialization is asynchronous; `play()` waits for `init()` to complete
+- Driver persists for plugin lifetime (Windows) or per-play (macOS/Linux)
+- Driver disposed on plugin shutdown via process exit/signal handlers in `plugin.ts`
+
+**Implementation Files**
+
+- `lib/audio-player.ts`: AudioPlayer facade and playback state management
+- `lib/audio-driver/driver.ts`: AudioDriver interface and factory function
+- `lib/audio-driver/windows-persistent.ts`: Windows PowerShell persistent driver
+- `lib/audio-driver/macos-system.ts`: macOS afplay / Linux aplay driver
+
+See `plans/0001-audio-notifications.md` for detailed design decisions and evolution notes.
 
 ### Visual Feedback
 
