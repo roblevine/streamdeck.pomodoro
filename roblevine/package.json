@@ -2,7 +2,11 @@
     "scripts": {
         "build:assets": "node ./scripts/generate-sounds.mjs",
         "build": "npm run build:assets && rollup -c",
-        "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart uk.co.roblevine.streamdeck.pomodoro\""
+        "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart uk.co.roblevine.streamdeck.pomodoro\"",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:ui": "vitest --ui",
+        "test:coverage": "vitest run --coverage"
     },
     "type": "module",
     "devDependencies": {
@@ -11,11 +15,15 @@
         "@rollup/plugin-node-resolve": "^15.2.2",
         "@rollup/plugin-terser": "^0.4.4",
         "@rollup/plugin-typescript": "^12.1.0",
+        "@sinonjs/fake-timers": "^15.0.0",
         "@tsconfig/node20": "^20.1.2",
         "@types/node": "~20.15.0",
+        "@vitest/coverage-v8": "^4.0.10",
+        "@vitest/ui": "^4.0.10",
         "rollup": "^4.0.2",
         "tslib": "^2.6.2",
-        "typescript": "^5.2.2"
+        "typescript": "^5.2.2",
+        "vitest": "^4.0.10"
     },
     "dependencies": {
         "@elgato/streamdeck": "^1.0.0"

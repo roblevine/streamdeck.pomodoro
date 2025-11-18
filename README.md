@@ -98,6 +98,41 @@ npm run watch
 
 The `npm run build` command automatically generates audio assets before compiling TypeScript.
 
+### Testing
+
+The plugin includes a comprehensive test suite using Vitest:
+
+```bash
+# Run all tests once
+npm test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+
+# Run tests with visual UI
+npm run test:ui
+
+# Generate coverage report
+npm run test:coverage
+```
+
+**Test Organization:**
+
+```
+test/
+├── unit/           # Unit tests for individual components
+├── integration/    # Integration tests for component interactions
+├── e2e/            # End-to-end workflow tests
+├── mocks/          # Mock implementations (Stream Deck SDK, audio, etc.)
+├── helpers/        # Test utilities and helpers
+└── fixtures/       # Test data and fixture files
+```
+
+**Coverage Targets:**
+- Overall: 85% line coverage
+- Core business logic: 95% coverage
+- See `plans/0008-comprehensive-testing.md` for detailed testing strategy
+
 ### Asset Generation
 
 The build process includes automatic generation of CC0-licensed audio assets:
