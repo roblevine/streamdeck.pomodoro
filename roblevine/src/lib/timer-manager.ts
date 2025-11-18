@@ -1,8 +1,13 @@
+import type { ITimerSystem } from '../types/timers';
+import { globalTimers } from '../types/timers';
+
 /**
  * Manages timer state and lifecycle for action instances
  */
 export class TimerManager {
 	private timers: Map<string, NodeJS.Timeout> = new Map();
+
+	constructor(private timerSystem: ITimerSystem = globalTimers) {}
 
 	/**
 	 * Start a new timer for an action instance
@@ -15,15 +20,15 @@ export class TimerManager {
 	): void {
 		this.stop(actionId);
 
-		const endTime = Date.now() + durationSeconds * 1000;
+		const endTime = this.timerSystem.now() + durationSeconds * 1000;
 
 		// Initial tick
-		const initialRemaining = Math.ceil((endTime - Date.now()) / 1000);
+		const initialRemaining = Math.ceil((endTime - this.timerSystem.now()) / 1000);
 		onTick(initialRemaining);
 
 		// Update every second
-		const timerId = setInterval(async () => {
-			const now = Date.now();
+		const timerId = this.timerSystem.setInterval(async () => {
+			const now = this.timerSystem.now();
 			const remaining = Math.ceil((endTime - now) / 1000);
 
 			if (remaining <= 0) {
@@ -43,7 +48,7 @@ export class TimerManager {
 	stop(actionId: string): void {
 		const timerId = this.timers.get(actionId);
 		if (timerId) {
-			clearInterval(timerId);
+			this.timerSystem.clearInterval(timerId);
 			this.timers.delete(actionId);
 		}
 	}
