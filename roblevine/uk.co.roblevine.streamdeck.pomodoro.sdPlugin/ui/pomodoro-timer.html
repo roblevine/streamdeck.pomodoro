@@ -109,13 +109,6 @@
                         const raw = detail.value;
                         const checked = (raw === true || raw === 'true') || (!!el?.checked);
                         updateSoundControlsState(checked);
-                        // Persist explicitly for reliability
-                        try {
-                            const { streamDeckClient } = window.SDPIComponents;
-                            streamDeckClient.setSettings({ enableSound: checked });
-                        } catch (err) {
-                            
-                        }
                     }
                 } catch (err) {
                     
@@ -152,12 +145,6 @@
                 input.addEventListener('change', () => {
                     const checked = !!input.checked;
                     updateSoundControlsState(checked);
-                    try {
-                        const { streamDeckClient } = window.SDPIComponents;
-                        streamDeckClient.setSettings({ enableSound: checked });
-                    } catch (err) {
-                        
-                    }
                 });
             };
 
